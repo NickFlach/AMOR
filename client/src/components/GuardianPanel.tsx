@@ -3,12 +3,370 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Send, Trash2, Loader2, Sparkles, Wallet } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Bot, Send, Trash2, Loader2, Sparkles, Wallet, Play, ChevronDown, ChevronRight, ExternalLink, Copy, Check, AlertCircle, ShieldCheck } from "lucide-react";
 import { useWeb3 } from "@/lib/web3";
-import type { GuardianMessage } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { truncateAddress, getExplorerLink, CONTRACTS } from "@/lib/contracts";
+import { ethers } from "ethers";
+import type { GuardianMessage, TransactionSuggestion } from "@shared/schema";
 
-function MessageBubble({ message }: { message: GuardianMessage }) {
+const WHITELISTED_CONTRACTS = new Set([
+  CONTRACTS.AMOR.toLowerCase(),
+  CONTRACTS.ST_AMOR.toLowerCase(),
+  CONTRACTS.STAKING_MANAGER.toLowerCase(),
+  CONTRACTS.GOVERNOR.toLowerCase(),
+  CONTRACTS.TIMELOCK.toLowerCase(),
+]);
+
+function isValidHexData(data: string): boolean {
+  if (!data.startsWith("0x")) return false;
+  const hexPart = data.slice(2).trim();
+  if (hexPart.length === 0 || hexPart.length % 2 !== 0) return false;
+  return /^[a-fA-F0-9]+$/.test(hexPart);
+}
+
+function isWhitelistedContract(address: string): boolean {
+  return WHITELISTED_CONTRACTS.has(address.toLowerCase());
+}
+
+function inferTransactionType(description: string, contractAddress: string): TransactionSuggestion["type"] {
+  const lowerDesc = description.toLowerCase();
+  const contractLower = contractAddress.toLowerCase();
+  
+  if (contractLower === CONTRACTS.STAKING_MANAGER.toLowerCase()) {
+    if (lowerDesc.includes("claim")) return "claim";
+    if (lowerDesc.includes("unstake") || lowerDesc.includes("request unstake")) return "unstake";
+    if (lowerDesc.includes("stake")) return "stake";
+  }
+  
+  if (contractLower === CONTRACTS.AMOR.toLowerCase()) {
+    if (lowerDesc.includes("approve")) return "approve";
+  }
+  
+  if (contractLower === CONTRACTS.ST_AMOR.toLowerCase()) {
+    if (lowerDesc.includes("delegate")) return "delegate";
+  }
+  
+  if (contractLower === CONTRACTS.GOVERNOR.toLowerCase()) {
+    if (lowerDesc.includes("vote")) return "vote";
+  }
+  
+  return "approve";
+}
+
+interface ParsedTransaction {
+  type: TransactionSuggestion["type"];
+  to: string;
+  data: string;
+  description: string;
+  amount?: string;
+  isVerified: boolean;
+}
+
+function parseTransactionsFromMessage(content: string): ParsedTransaction[] {
+  const transactions: ParsedTransaction[] = [];
+  
+  const stepBlocks = content.split(/(?=---\s*Step\s+\d+|Transaction Ready:)/i);
+  
+  for (const block of stepBlocks) {
+    const contractMatch = block.match(/Contract:\s*(0x[a-fA-F0-9]{40})/i);
+    const dataMatch = block.match(/Encoded Data:\s*(0x[a-fA-F0-9]+)/i);
+    const descMatch = block.match(/Description:\s*([^\n]+)/i);
+    const amountMatch = block.match(/(\d+(?:\.\d+)?)\s*(?:AMOR|stAMOR)/i);
+    
+    if (!contractMatch || !dataMatch) continue;
+    
+    const contractAddress = contractMatch[1];
+    const encodedData = dataMatch[1].trim().replace(/[^a-fA-F0-9x]/g, '');
+    const description = descMatch?.[1]?.trim() || "Execute transaction";
+    const amount = amountMatch?.[1];
+    
+    if (!isValidHexData(encodedData)) continue;
+    
+    const isVerified = isWhitelistedContract(contractAddress);
+    const txType = inferTransactionType(description, contractAddress);
+    
+    transactions.push({
+      type: txType,
+      to: contractAddress,
+      data: encodedData,
+      description,
+      amount,
+      isVerified,
+    });
+  }
+  
+  return transactions;
+}
+
+function TransactionCard({ 
+  transaction, 
+  index, 
+  total,
+  onExecute,
+  isExecuting,
+  isExecuted,
+  hasError 
+}: { 
+  transaction: ParsedTransaction;
+  index: number;
+  total: number;
+  onExecute: () => void;
+  isExecuting: boolean;
+  isExecuted: boolean;
+  hasError: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const getTypeColor = (type: TransactionSuggestion["type"]) => {
+    switch (type) {
+      case "stake": return "bg-chart-1/20 text-chart-1";
+      case "unstake": return "bg-chart-2/20 text-chart-2";
+      case "claim": return "bg-chart-3/20 text-chart-3";
+      case "delegate": return "bg-chart-4/20 text-chart-4";
+      case "vote": return "bg-chart-5/20 text-chart-5";
+      case "approve": return "bg-muted text-muted-foreground";
+      default: return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const canExecute = transaction.isVerified && !isExecuting && !isExecuted;
+
+  return (
+    <div 
+      className={`rounded-md border bg-background/50 p-3 space-y-2 ${!transaction.isVerified ? 'border-destructive/50' : ''}`}
+      data-testid={`transaction-card-${index}`}
+    >
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          {total > 1 && (
+            <Badge variant="outline" className="text-xs">
+              Step {index + 1}/{total}
+            </Badge>
+          )}
+          <Badge className={`text-xs capitalize ${getTypeColor(transaction.type)}`}>
+            {transaction.type}
+          </Badge>
+          {transaction.isVerified ? (
+            <Badge variant="outline" className="text-xs text-chart-1 border-chart-1/30">
+              <ShieldCheck className="mr-1 h-3 w-3" />
+              Verified
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="text-xs">
+              <AlertCircle className="mr-1 h-3 w-3" />
+              Unknown Contract
+            </Badge>
+          )}
+          {isExecuted && (
+            <Badge className="bg-chart-1/20 text-chart-1 text-xs">
+              <Check className="mr-1 h-3 w-3" />
+              Executed
+            </Badge>
+          )}
+          {hasError && (
+            <Badge variant="destructive" className="text-xs">
+              <AlertCircle className="mr-1 h-3 w-3" />
+              Failed
+            </Badge>
+          )}
+        </div>
+        <Button
+          size="sm"
+          onClick={onExecute}
+          disabled={!canExecute}
+          variant={transaction.isVerified ? "default" : "outline"}
+          data-testid={`button-execute-tx-${index}`}
+        >
+          {isExecuting ? (
+            <>
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              Executing...
+            </>
+          ) : isExecuted ? (
+            <>
+              <Check className="mr-1 h-3 w-3" />
+              Done
+            </>
+          ) : !transaction.isVerified ? (
+            <>
+              <AlertCircle className="mr-1 h-3 w-3" />
+              Blocked
+            </>
+          ) : (
+            <>
+              <Play className="mr-1 h-3 w-3" />
+              Execute
+            </>
+          )}
+        </Button>
+      </div>
+
+      <p className="text-sm">{transaction.description}</p>
+      
+      {transaction.amount && (
+        <p className="text-sm text-muted-foreground">
+          Amount: <span className="font-mono">{transaction.amount} AMOR</span>
+        </p>
+      )}
+
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="w-full justify-start gap-1">
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <span className="text-xs">Transaction Details</span>
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-2 pt-2">
+          <div className="flex items-center justify-between gap-2 rounded bg-muted/50 p-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Contract:</span>
+              <span className="font-mono text-xs">{truncateAddress(transaction.to)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => handleCopy(transaction.to)}
+                data-testid={`button-copy-address-${index}`}
+              >
+                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              </Button>
+              <a
+                href={getExplorerLink(transaction.to)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
+                data-testid={`link-explorer-${index}`}
+              >
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </div>
+          <div className="rounded bg-muted/50 p-2">
+            <span className="text-xs text-muted-foreground">Calldata:</span>
+            <p className="font-mono text-xs break-all mt-1">
+              {transaction.data.length > 66 
+                ? `${transaction.data.slice(0, 66)}...` 
+                : transaction.data}
+            </p>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
+
+function MessageBubble({ 
+  message, 
+  signer,
+  isConnected 
+}: { 
+  message: GuardianMessage;
+  signer: ethers.Signer | null;
+  isConnected: boolean;
+}) {
   const isUser = message.role === "user";
+  const { toast } = useToast();
+  const [executingIndex, setExecutingIndex] = useState<number | null>(null);
+  const [executedIndices, setExecutedIndices] = useState<Set<number>>(new Set());
+  const [errorIndices, setErrorIndices] = useState<Set<number>>(new Set());
+  
+  const transactions = isUser ? [] : parseTransactionsFromMessage(message.content);
+
+  const handleExecuteTransaction = async (tx: ParsedTransaction, index: number) => {
+    if (!signer || !isConnected) {
+      toast({
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to execute transactions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!tx.isVerified) {
+      toast({
+        title: "Transaction Blocked",
+        description: "This transaction targets an unverified contract and cannot be executed for security reasons.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isValidHexData(tx.data)) {
+      toast({
+        title: "Invalid Transaction Data",
+        description: "The transaction data format is invalid.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!ethers.isAddress(tx.to)) {
+      toast({
+        title: "Invalid Contract Address",
+        description: "The target contract address is invalid.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setExecutingIndex(index);
+    setErrorIndices(prev => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+
+    try {
+      toast({
+        title: "Transaction Pending",
+        description: "Please confirm the transaction in your wallet...",
+      });
+
+      const txRequest = {
+        to: tx.to,
+        data: tx.data,
+      };
+
+      const txResponse = await signer.sendTransaction(txRequest);
+      
+      toast({
+        title: "Transaction Submitted",
+        description: `Transaction hash: ${txResponse.hash.slice(0, 10)}...`,
+      });
+
+      await txResponse.wait();
+
+      setExecutedIndices(prev => new Set([...prev, index]));
+      
+      toast({
+        title: "Transaction Successful",
+        description: tx.description,
+      });
+    } catch (error) {
+      console.error("Transaction error:", error);
+      setErrorIndices(prev => new Set([...prev, index]));
+      
+      const errorMessage = error instanceof Error ? error.message : "Transaction failed";
+      toast({
+        title: "Transaction Failed",
+        description: errorMessage.slice(0, 100),
+        variant: "destructive",
+      });
+    } finally {
+      setExecutingIndex(null);
+    }
+  };
 
   return (
     <div
@@ -16,7 +374,7 @@ function MessageBubble({ message }: { message: GuardianMessage }) {
       data-testid={`message-${message.id}`}
     >
       <div
-        className={`max-w-[80%] rounded-lg p-3 ${
+        className={`max-w-[85%] rounded-lg p-3 ${
           isUser
             ? "bg-primary text-primary-foreground"
             : "bg-muted"
@@ -29,7 +387,35 @@ function MessageBubble({ message }: { message: GuardianMessage }) {
           </div>
         )}
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-        <p className="text-xs opacity-60 mt-1">
+        
+        {transactions.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="text-xs">
+                {transactions.length} Transaction{transactions.length > 1 ? 's' : ''} Available
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                Review details before executing
+              </span>
+            </div>
+            <div className="space-y-2">
+              {transactions.map((tx, idx) => (
+                <TransactionCard
+                  key={`${message.id}-tx-${idx}`}
+                  transaction={tx}
+                  index={idx}
+                  total={transactions.length}
+                  onExecute={() => handleExecuteTransaction(tx, idx)}
+                  isExecuting={executingIndex === idx}
+                  isExecuted={executedIndices.has(idx)}
+                  hasError={errorIndices.has(idx)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        
+        <p className="text-xs opacity-60 mt-2">
           {new Date(message.timestamp).toLocaleTimeString()}
         </p>
       </div>
@@ -38,7 +424,7 @@ function MessageBubble({ message }: { message: GuardianMessage }) {
 }
 
 export function GuardianPanel() {
-  const { isConnected, address, amorBalance, stAmorBalance, votingPower } = useWeb3();
+  const { isConnected, address, amorBalance, stAmorBalance, votingPower, signer } = useWeb3();
   const [messages, setMessages] = useState<GuardianMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -245,11 +631,16 @@ export function GuardianPanel() {
               ) : (
                 <div className="space-y-4">
                   {messages.map((msg) => (
-                    <MessageBubble key={msg.id} message={msg} />
+                    <MessageBubble 
+                      key={msg.id} 
+                      message={msg} 
+                      signer={signer}
+                      isConnected={isConnected}
+                    />
                   ))}
                   {streamingContent && (
                     <div className="flex justify-start">
-                      <div className="max-w-[80%] rounded-lg bg-muted p-3">
+                      <div className="max-w-[85%] rounded-lg bg-muted p-3">
                         <div className="flex items-center gap-2 mb-2">
                           <Bot className="h-4 w-4" />
                           <span className="text-xs font-medium">AMOR Guardian</span>

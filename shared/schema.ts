@@ -103,3 +103,17 @@ export interface GuardianResponse {
   suggestedAction?: GuardianAction;
   state?: Partial<GuardianState>;
 }
+
+export interface TransactionSuggestion {
+  type: "stake" | "unstake" | "claim" | "delegate" | "vote" | "approve";
+  to: string;
+  data: string;
+  description: string;
+  amount?: string;
+}
+
+export interface GuardianResponseWithAction {
+  message: string;
+  suggestedAction?: GuardianAction;
+  transactions?: TransactionSuggestion[];
+}

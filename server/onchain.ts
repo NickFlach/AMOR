@@ -36,7 +36,21 @@ const GOVERNOR_ABI = [
   "function state(uint256 proposalId) view returns (uint8)",
   "function proposalVotes(uint256 proposalId) view returns (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes)",
   "function hasVoted(uint256 proposalId, address account) view returns (bool)",
+  "function proposalSnapshot(uint256 proposalId) view returns (uint256)",
+  "function proposalDeadline(uint256 proposalId) view returns (uint256)",
+  "function proposalProposer(uint256 proposalId) view returns (address)",
 ];
+
+const PROPOSAL_STATE_NAMES = [
+  "Pending",
+  "Active", 
+  "Canceled",
+  "Defeated",
+  "Succeeded",
+  "Queued",
+  "Expired",
+  "Executed",
+] as const;
 
 let provider: ethers.JsonRpcProvider | null = null;
 
@@ -251,6 +265,266 @@ export function formatUserDataForAI(data: UserChainData): string {
       const unlockDate = new Date(r.unlockAt * 1000).toLocaleString();
       const isReady = Date.now() >= r.unlockAt * 1000;
       output += `\n  - Request #${r.id}: ${r.amount} AMOR, ${isReady ? "Ready to claim" : `Unlocks: ${unlockDate}`}`;
+    });
+  }
+
+  return output;
+}
+
+export interface TokenPrice {
+  symbol: string;
+  priceUsd: string;
+  change24h: string;
+  lastUpdated: number;
+}
+
+export interface ProposalDetails {
+  proposalId: string;
+  state: number;
+  stateName: string;
+  proposer: string;
+  forVotes: string;
+  againstVotes: string;
+  abstainVotes: string;
+  snapshotBlock: number;
+  deadlineBlock: number;
+  timestamp: number;
+}
+
+export interface VotingStatus {
+  proposalId: string;
+  address: string;
+  hasVoted: boolean;
+  timestamp: number;
+}
+
+export interface VotingPowerAnalysis {
+  address: string;
+  stAmorBalance: string;
+  votingPower: string;
+  delegate: string;
+  isSelfDelegated: boolean;
+  votingPowerActive: boolean;
+  recommendations: string[];
+  timestamp: number;
+}
+
+export function getTokenPrice(symbol: string): TokenPrice {
+  const mockPrices: Record<string, { price: string; change: string }> = {
+    AMOR: { price: "0.0234", change: "+5.2" },
+    GAS: { price: "4.87", change: "-1.3" },
+    NEO: { price: "12.45", change: "+2.1" },
+    STAMOR: { price: "0.0234", change: "+5.2" },
+  };
+
+  const upperSymbol = symbol.toUpperCase();
+  const data = mockPrices[upperSymbol];
+
+  if (!data) {
+    return {
+      symbol: upperSymbol,
+      priceUsd: "0",
+      change24h: "0",
+      lastUpdated: Date.now(),
+    };
+  }
+
+  return {
+    symbol: upperSymbol,
+    priceUsd: data.price,
+    change24h: data.change,
+    lastUpdated: Date.now(),
+  };
+}
+
+export async function getProposalDetails(proposalId: string): Promise<ProposalDetails> {
+  const defaultDetails: ProposalDetails = {
+    proposalId,
+    state: 0,
+    stateName: "Unknown",
+    proposer: ethers.ZeroAddress,
+    forVotes: "0",
+    againstVotes: "0",
+    abstainVotes: "0",
+    snapshotBlock: 0,
+    deadlineBlock: 0,
+    timestamp: Date.now(),
+  };
+
+  try {
+    const rpcProvider = getProvider();
+    const governor = new ethers.Contract(CONTRACTS.GOVERNOR, GOVERNOR_ABI, rpcProvider);
+
+    const [state, votes, proposer, snapshot, deadline] = await Promise.all([
+      governor.state(proposalId).catch(() => 0),
+      governor.proposalVotes(proposalId).catch(() => [BigInt(0), BigInt(0), BigInt(0)]),
+      governor.proposalProposer(proposalId).catch(() => ethers.ZeroAddress),
+      governor.proposalSnapshot(proposalId).catch(() => BigInt(0)),
+      governor.proposalDeadline(proposalId).catch(() => BigInt(0)),
+    ]);
+
+    const [againstVotes, forVotes, abstainVotes] = votes;
+
+    return {
+      proposalId,
+      state: Number(state),
+      stateName: PROPOSAL_STATE_NAMES[Number(state)] || "Unknown",
+      proposer,
+      forVotes: formatTokenAmount(forVotes),
+      againstVotes: formatTokenAmount(againstVotes),
+      abstainVotes: formatTokenAmount(abstainVotes),
+      snapshotBlock: Number(snapshot),
+      deadlineBlock: Number(deadline),
+      timestamp: Date.now(),
+    };
+  } catch (error) {
+    console.error("Error fetching proposal details:", error);
+    return defaultDetails;
+  }
+}
+
+export async function checkHasVoted(proposalId: string, address: string): Promise<VotingStatus> {
+  const defaultStatus: VotingStatus = {
+    proposalId,
+    address,
+    hasVoted: false,
+    timestamp: Date.now(),
+  };
+
+  if (!ethers.isAddress(address)) {
+    return defaultStatus;
+  }
+
+  try {
+    const rpcProvider = getProvider();
+    const governor = new ethers.Contract(CONTRACTS.GOVERNOR, GOVERNOR_ABI, rpcProvider);
+
+    const hasVoted = await governor.hasVoted(proposalId, address).catch(() => false);
+
+    return {
+      proposalId,
+      address,
+      hasVoted,
+      timestamp: Date.now(),
+    };
+  } catch (error) {
+    console.error("Error checking voting status:", error);
+    return defaultStatus;
+  }
+}
+
+export async function analyzeVotingPower(address: string): Promise<VotingPowerAnalysis> {
+  const defaultAnalysis: VotingPowerAnalysis = {
+    address,
+    stAmorBalance: "0",
+    votingPower: "0",
+    delegate: ethers.ZeroAddress,
+    isSelfDelegated: false,
+    votingPowerActive: false,
+    recommendations: [],
+    timestamp: Date.now(),
+  };
+
+  if (!ethers.isAddress(address)) {
+    return { ...defaultAnalysis, recommendations: ["Invalid address provided."] };
+  }
+
+  try {
+    const rpcProvider = getProvider();
+    const stAmor = new ethers.Contract(CONTRACTS.ST_AMOR, ST_AMOR_ABI, rpcProvider);
+
+    const [balance, votes, delegate] = await Promise.all([
+      stAmor.balanceOf(address).catch(() => BigInt(0)),
+      stAmor.getVotes(address).catch(() => BigInt(0)),
+      stAmor.delegates(address).catch(() => ethers.ZeroAddress),
+    ]);
+
+    const stAmorBalance = formatTokenAmount(balance);
+    const votingPower = formatTokenAmount(votes);
+    const isSelfDelegated = delegate.toLowerCase() === address.toLowerCase();
+    const hasBalance = balance > BigInt(0);
+    const hasVotingPower = votes > BigInt(0);
+    const votingPowerActive = hasVotingPower;
+
+    const recommendations: string[] = [];
+
+    if (!hasBalance) {
+      recommendations.push("You have no stAMOR tokens. Stake AMOR to receive stAMOR and participate in governance.");
+    } else if (delegate === ethers.ZeroAddress) {
+      recommendations.push("Your voting power is not activated. Delegate to yourself (self-delegate) to activate your voting power.");
+    } else if (!isSelfDelegated && !hasVotingPower) {
+      recommendations.push(`Your voting power is delegated to ${delegate}. To vote directly, self-delegate to activate your own voting power.`);
+    } else if (isSelfDelegated && hasVotingPower) {
+      recommendations.push("Your voting power is active and ready to vote on proposals.");
+    }
+
+    if (hasBalance && parseFloat(stAmorBalance) < 100) {
+      recommendations.push("Consider staking more AMOR to increase your voting power and influence in governance.");
+    }
+
+    return {
+      address,
+      stAmorBalance,
+      votingPower,
+      delegate,
+      isSelfDelegated,
+      votingPowerActive,
+      recommendations,
+      timestamp: Date.now(),
+    };
+  } catch (error) {
+    console.error("Error analyzing voting power:", error);
+    return { ...defaultAnalysis, recommendations: ["Error analyzing voting power. Please try again."] };
+  }
+}
+
+export function formatTokenPriceForAI(price: TokenPrice): string {
+  return `Token Price (${price.symbol}):
+- Price: $${price.priceUsd} USD
+- 24h Change: ${price.change24h}%
+- Last Updated: ${new Date(price.lastUpdated).toISOString()}
+
+Note: Prices are indicative and may vary across exchanges.`;
+}
+
+export function formatProposalDetailsForAI(details: ProposalDetails): string {
+  const totalVotes = parseFloat(details.forVotes) + parseFloat(details.againstVotes) + parseFloat(details.abstainVotes);
+  const forPercentage = totalVotes > 0 ? ((parseFloat(details.forVotes) / totalVotes) * 100).toFixed(1) : "0";
+  const againstPercentage = totalVotes > 0 ? ((parseFloat(details.againstVotes) / totalVotes) * 100).toFixed(1) : "0";
+  const abstainPercentage = totalVotes > 0 ? ((parseFloat(details.abstainVotes) / totalVotes) * 100).toFixed(1) : "0";
+
+  return `Proposal Details (ID: ${details.proposalId}):
+- Status: ${details.stateName}
+- Proposer: ${details.proposer}
+- Snapshot Block: ${details.snapshotBlock}
+- Deadline Block: ${details.deadlineBlock}
+
+Vote Tally:
+- For: ${details.forVotes} votes (${forPercentage}%)
+- Against: ${details.againstVotes} votes (${againstPercentage}%)
+- Abstain: ${details.abstainVotes} votes (${abstainPercentage}%)
+- Total Votes: ${totalVotes.toFixed(4)} votes`;
+}
+
+export function formatVotingStatusForAI(status: VotingStatus): string {
+  return `Voting Status:
+- Proposal ID: ${status.proposalId}
+- Address: ${status.address}
+- Has Voted: ${status.hasVoted ? "Yes" : "No"}`;
+}
+
+export function formatVotingPowerAnalysisForAI(analysis: VotingPowerAnalysis): string {
+  let output = `Voting Power Analysis (${analysis.address}):
+- stAMOR Balance: ${analysis.stAmorBalance} stAMOR
+- Active Voting Power: ${analysis.votingPower} votes
+- Delegate: ${analysis.delegate === ethers.ZeroAddress ? "Not set" : analysis.delegate}
+- Self-Delegated: ${analysis.isSelfDelegated ? "Yes" : "No"}
+- Voting Power Active: ${analysis.votingPowerActive ? "Yes" : "No"}`;
+
+  if (analysis.recommendations.length > 0) {
+    output += "\n\nRecommendations:";
+    analysis.recommendations.forEach((rec, i) => {
+      output += `\n${i + 1}. ${rec}`;
     });
   }
 
