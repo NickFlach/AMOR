@@ -31,6 +31,14 @@ function LoadingScreen() {
   );
 }
 
+function InitErrorBanner({ error }: { error: string }) {
+  return (
+    <div className="fixed top-0 left-0 right-0 z-50 bg-destructive/90 text-destructive-foreground px-4 py-2 text-center text-sm">
+      Wallet connection unavailable: {error}
+    </div>
+  );
+}
+
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
@@ -60,6 +68,7 @@ function App() {
       <Web3Provider>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
+            {initError && <InitErrorBanner error={initError} />}
             <Toaster />
             <Router />
           </TooltipProvider>

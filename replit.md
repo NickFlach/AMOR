@@ -15,13 +15,15 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 │   │   │   ├── Footer.tsx     # Contract addresses and links
 │   │   │   └── ThemeToggle.tsx # Dark/light mode toggle
 │   │   ├── lib/
+│   │   │   ├── appkit.ts      # Reown AppKit / WalletConnect configuration
 │   │   │   ├── contracts.ts   # Contract addresses, ABIs, utilities
-│   │   │   ├── web3.tsx       # Web3 context provider (ethers.js)
+│   │   │   ├── web3.tsx       # Web3 context provider (uses AppKit)
 │   │   │   └── theme.tsx      # Theme context provider
 │   │   ├── pages/
 │   │   │   └── Home.tsx       # Main page layout
 │   │   └── App.tsx            # App root with providers
 ├── server/                    # Express backend
+│   └── routes.ts              # API routes including /api/config
 ├── shared/                    # Shared types and schemas
 └── design_guidelines.md       # UI/UX design guidelines
 ```
@@ -39,7 +41,7 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 - **Explorer**: https://xexplorer.neo.org
 
 ## Features
-1. **Wallet Connection**: MetaMask integration with Neo X network switching
+1. **Wallet Connection**: WalletConnect v2 via Reown AppKit - works in embedded iframes
 2. **Token Staking**: Stake AMOR to receive stAMOR voting tokens
 3. **Unstaking**: Request unstake with cooldown period, claim after unlock
 4. **Governance**: View proposals, cast votes (For/Against/Abstain)
@@ -48,14 +50,19 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 
 ## Tech Stack
 - **Frontend**: React, TypeScript, Vite, TailwindCSS, shadcn/ui
-- **Web3**: ethers.js v6
+- **Web3**: ethers.js v6, @reown/appkit, @reown/appkit-adapter-ethers
+- **Wallet**: WalletConnect v2 via Reown AppKit
 - **Backend**: Express.js
 - **Styling**: TailwindCSS with custom design tokens
+
+## Environment Variables
+- `WALLETCONNECT_PROJECT_ID` (secret): Required for WalletConnect - get from https://cloud.walletconnect.com
 
 ## Running the Project
 The project runs on `npm run dev` which starts both the Express server and Vite dev server on port 5000.
 
 ## Development Notes
+- WalletConnect enables reliable wallet connection in Replit's embedded preview
+- The /api/config endpoint exposes WALLETCONNECT_PROJECT_ID to the frontend
 - RPC calls may fail in development environment due to CORS/network restrictions
-- Full functionality available when connected to Neo X via MetaMask
 - Fallback values are used when RPC calls fail to ensure UI remains functional

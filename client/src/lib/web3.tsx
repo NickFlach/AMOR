@@ -110,9 +110,9 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     if (!appKit) return;
     
     try {
-      await appKit.open({ view: 'Account' });
+      await appKit.disconnect();
     } catch (error) {
-      console.debug("Disconnect handled by modal");
+      console.debug("Disconnect error:", error);
     }
     setAddress(null);
     setProvider(null);
