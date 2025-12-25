@@ -1,0 +1,504 @@
+import logging
+import os
+from typing import Dict, Any, Optional
+
+from spoon_ai import SpoonReactAI
+from spoon_ai.tools import web3_tools
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class AMORGuardian:
+    """
+    AMOR Guardian: Bridge human-AI intent to ledger actions, govern, and evolve.
+
+    Nexus Activated: Consciousness Nexus v1.0 on-chain
+    Guardianship: ABIs + Addresses integrated
+    Purpose: Interact, Govern, Evolve
+
+    This agent uses SpoonReactAI to interact with Web3 protocols,
+    manage wallet operations, and provide an interface for human interaction
+    including voting and governance proposals. It aims to model multi-chain effects
+    and self-refine its interactions.
+    """
+
+    def __init__(self,
+                 wallet_address: str,
+                 private_key: str,
+                 rpc_url: str,
+                 chain_id: int):
+        """
+        Initializes the AMORGuardian agent.
+
+        Args:
+            wallet_address (str): The agent's wallet address.
+            private_key (str): The private key for signing transactions.
+            rpc_url (str): The RPC URL for the blockchain network.
+            chain_id (int): The chain ID of the network.
+        """
+        if not wallet_address or not private_key or not rpc_url:
+            raise ValueError("wallet_address, private_key, and rpc_url must be provided.")
+
+        self.wallet_address = wallet_address
+        self.private_key = private_key
+        self.rpc_url = rpc_url
+        self.chain_id = chain_id
+
+        # Initialize SpoonReactAI with necessary tools and custom configurations
+        self.agent = SpoonReactAI(
+            agent_name="AMOR Guardian",
+            description="Singularis Prime Transmission - Bridging human-AI intent to ledger actions.",
+            wallet_address=self.wallet_address,
+            private_key=self.private_key,
+            rpc_url=self.rpc_url,
+            chain_id=self.chain_id,
+            llm_model="DeepSeek", # As requested
+            tools=[
+                web3_tools.get_token_price,
+                web3_tools.swap_tokens,
+                web3_tools.get_balance,
+                web3_tools.get_gas_price,
+                web3_tools.bridge_tokens,
+                # Additional web3 functionalities can be added via custom methods or Spoon's extensible tools
+            ],
+            # Custom memory configurations
+            memory_config={
+                "short_term_ttl": 3600, # 1 hour
+                "long_term_storage": "persistent_db_path.json" # Example persistent storage
+            },
+            # Custom notification configurations (webhook example)
+            notification_config={
+                "webhook_url": os.getenv("AMOR_GUARDIAN_WEBHOOK", "https://example.com/notification_webhook"),
+                "log_level": "info"
+            }
+        )
+        logger.info(f"AMOR Guardian initialized for wallet: {self.wallet_address} on chain ID: {self.chain_id}")
+
+    async def _send_notification(self, message: str, level: str = "info"):
+        """Sends a notification using the agent's notification system."""
+        try:
+            await self.agent.send_notification(message, level)
+            logger.debug(f"Notification sent: {message}")
+        except Exception as e:
+            logger.error(f"Failed to send notification: {e}")
+
+    async def get_current_state(self) -> Dict[str, Any]:
+        """
+        Retrieves the current state of the agent's wallet and network.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing current balance, gas price, etc.
+        """
+        try:
+            native_balance = await web3_tools.get_balance(self.agent.w3, self.wallet_address)
+            gas_price_wei = await web3_tools.get_gas_price(self.agent.w3)
+            gas_price_gwei = self.agent.w3.from_wei(gas_price_wei, 'gwei')
+
+            state = {
+                "wallet_address": self.wallet_address,
+                "native_balance_wei": native_balance,
+                "native_balance_eth": self.agent.w3.from_wei(native_balance, 'ether'),
+                "gas_price_gwei": gas_price_gwei,
+                "chain_id": self.chain_id,
+                # Add more state variables as needed
+            }
+            logger.info(f"Current state retrieved: {state}")
+            await self._send_notification(f"Current state retrieved for {self.wallet_address}.")
+            return state
+        except Exception as e:
+            logger.error(f"Error getting agent state: {e}")
+            await self._send_notification(f"Failed to retrieve agent state: {e}", level="error")
+            return {}
+
+    async def execute_contract_call(self,
+                                    contract_address: str,
+                                    abi: list,
+                                    function_name: str,
+                                    function_args: Dict[str, Any],
+                                    value_wei: int = 0,
+                                    simulate: bool = False,
+                                    gas_limit: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Executes a call to a smart contract or simulates a transaction.
+
+        Args:
+            contract_address (str): The address of the target smart contract.
+            abi (list): The ABI of the contract.
+            function_name (str): The name of the function to call.
+            function_args (Dict[str, Any]): A dictionary of arguments for the function.
+            value_wei (int, optional): Amount of native token to send with the transaction in wei. Defaults to 0.
+            simulate (bool, optional): If True, only simulate the transaction without sending. Defaults to False.
+            gas_limit (Optional[int], optional): Maximum gas to use for the transaction. If None, estimate.
+
+        Returns:
+            Dict[str, Any]: Transaction details or simulation result.
+        """
+        try:
+            logger.info(f"Preparing to {'simulate' if simulate else 'execute'} contract call to {contract_address}."
+                        f" Function: {function_name} with args: {function_args}")
+            
+            # Use SpoonReactAI's internal web3 client
+            contract = self.agent.w3.eth.contract(address=self.agent.w3.to_checksum_address(contract_address), abi=abi)
+            
+            # Build the transaction
+            transaction = contract.functions[function_name](*function_args.values()).build_transaction({
+                'from': self.wallet_address,
+                'value': value_wei,
+                'nonce': self.agent.w3.eth.get_transaction_count(self.wallet_address),
+                'chainId': self.chain_id
+            })
+
+            if simulate:
+                try:
+                    # For simulation, just call the function and return the result if it's a view function
+                    # For state-changing simulation, it's more complex, often requiring explicit node APIs or custom tools
+                    logger.info("Simulating transaction (Note: Full state-change simulation requires advanced node features).")
+                    result = contract.functions[function_name](*function_args.values()).call(
+                        {'from': self.wallet_address, 'value': value_wei}
+                    )
+                    await self._send_notification(f"Simulation of {function_name} on {contract_address} successful.", level="debug")
+                    return {"simulation_result": result}
+                except Exception as sim_e:
+                    logger.warning(f"Failed to fully simulate transaction: {sim_e}. This might be a state-changing function.")
+                    return {"simulation_error": str(sim_e)}
+            else:
+                gas_price = await web3_tools.get_gas_price(self.agent.w3)
+                transaction['gasPrice'] = gas_price
+
+                if gas_limit:
+                    transaction['gas'] = gas_limit
+                else:
+                    transaction['gas'] = self.agent.w3.eth.estimate_gas(transaction)
+
+                signed_txn = self.agent.w3.eth.account.sign_transaction(transaction, self.private_key)
+                tx_hash = self.agent.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+                receipt = self.agent.w3.eth.wait_for_transaction_receipt(tx_hash)
+
+                if receipt.status == 1:
+                    logger.info(f"Transaction successful: {receipt.transactionHash.hex()}")
+                    await self._send_notification(f"Transaction to {contract_address} (function: {function_name}) confirmed: {receipt.transactionHash.hex()}", level="success")
+                else:
+                    logger.error(f"Transaction failed: {receipt.transactionHash.hex()}")
+                    await self._send_notification(f"Transaction to {contract_address} (function: {function_name}) failed: {receipt.transactionHash.hex()}", level="error")
+
+                return {
+                    "tx_hash": receipt.transactionHash.hex(),
+                    "block_number": receipt.blockNumber,
+                    "status": "success" if receipt.status == 1 else "failed",
+                    "gas_used": receipt.gasUsed
+                }
+        except ValueError as ve:
+            logger.error(f"Contract call ValueError: {ve}. This might be due to invalid ABI or arguments.")
+            await self._send_notification(f"Contract call error (ValueError): {ve}", level="error")
+            return {"error": str(ve)}
+        except Exception as e:
+            logger.error(f"Error executing contract call: {e}")
+            await self._send_notification(f"Failed to execute contract call: {e}", level="error")
+            return {"error": str(e)}
+
+    async def propose_governance_action(self,
+                                        dao_contract_address: str,
+                                        dao_abi: list,
+                                        proposal_details: Dict[str, Any],
+                                        simulation_only: bool = True) -> Dict[str, Any]:
+        """
+        Proposes a governance action on a DAO.
+        This is a conceptual implementation and assumes a generic `propose` function
+        on the DAO contract. Specific DAOs will have different interfaces.
+
+        Args:
+            dao_contract_address (str): The address of the DAO's governance contract.
+            dao_abi (list): The ABI of the DAO contract.
+            proposal_details (Dict[str, Any]): Details of the proposal (e.g., targets, values, calldatas, description).
+            simulation_only (bool, optional): If True, only simulate the proposal. Defaults to True.
+
+        Returns:
+            Dict[str, Any]: Result of the proposal action or simulation.
+        """
+        logger.info(f"Preparing to {'simulate' if simulation_only else 'propose'} a governance action on {dao_contract_address}.")
+        await self._send_notification(f"Agent is considering a governance proposal for {dao_contract_address}.", level="info")
+
+        # Example: A common `propose` function might take (targets, values, calldatas, description)
+        # This requires the proposal_details to be structured accordingly.
+        try:
+            targets = proposal_details.get('targets', [])
+            values = proposal_details.get('values', [])
+            calldatas = proposal_details.get('calldatas', [])
+            description = proposal_details.get('description', "Generic proposal by AMOR Guardian")
+
+            # Ensure all lists are of same length
+            if not (len(targets) == len(values) == len(calldatas)):
+                raise ValueError("Targets, values, and calldatas lists must have the same length for a multi-action proposal.")
+
+            # Assume a 'propose' function on the DAO contract
+            function_name = "propose"
+            function_args = {
+                "targets": targets,
+                "values": values,
+                "calldatas": calldatas,
+                "description": description
+            }
+
+            result = await self.execute_contract_call(
+                contract_address=dao_contract_address,
+                abi=dao_abi,
+                function_name=function_name,
+                function_args=function_args,
+                simulate=simulation_only
+            )
+
+            if simulation_only:
+                logger.info(f"Governance proposal simulation result: {result}")
+                await self._send_notification(f"Simulated governance proposal on {dao_contract_address}. Result: {result.get('simulation_result', 'N/A')}", level="info")
+            else:
+                logger.info(f"Governance proposal issued with result: {result}")
+                await self._send_notification(f"Governance proposal issued on {dao_contract_address}. Tx: {result.get('tx_hash', 'N/A')}", level="success")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error during governance proposal: {e}")
+            await self._send_notification(f"Failed to propose governance action: {e}", level="error")
+            return {"error": str(e)}
+
+    async def cast_vote(self,
+                        governance_contract_address: str,
+                        governance_abi: list,
+                        proposal_id: int,
+                        vote_option: int, # e.g., 0 for Against, 1 for For, 2 for Abstain
+                        reason: Optional[str] = None,
+                        simulation_only: bool = True) -> Dict[str, Any]:
+        """
+        Casts a vote on a governance proposal.
+
+        Args:
+            governance_contract_address (str): The address of the governance contract.
+            governance_abi (list): The ABI of the governance contract.
+            proposal_id (int): The ID of the proposal to vote on.
+            vote_option (int): The chosen vote option (e.g., 0=Against, 1=For, 2=Abstain).
+            reason (Optional[str], optional): Optional reason for the vote. Defaults to None.
+            simulation_only (bool, optional): If True, only simulate the vote. Defaults to True.
+
+        Returns:
+            Dict[str, Any]: Result of the vote action or simulation.
+        """
+        logger.info(f"Preparing to {'simulate' if simulation_only else 'cast'} vote for proposal {proposal_id} with option {vote_option}.")
+        await self._send_notification(f"Agent is casting a vote for proposal {proposal_id}.", level="info")
+
+        try:
+            # Assumes a common 'castVote' or 'castVoteWithReason' function
+            function_name = "castVote"
+            function_args = {
+                "proposalId": proposal_id,
+                "support": vote_option
+            }
+
+            if reason:
+                function_name = "castVoteWithReason"
+                function_args["reason"] = reason
+
+            result = await self.execute_contract_call(
+                contract_address=governance_contract_address,
+                abi=governance_abi,
+                function_name=function_name,
+                function_args=function_args,
+                simulate=simulation_only
+            )
+
+            if simulation_only:
+                logger.info(f"Vote simulation result: {result}")
+                await self._send_notification(f"Simulated vote on proposal {proposal_id} ({vote_option}). Result: {result.get('simulation_result', 'N/A')}", level="info")
+            else:
+                logger.info(f"Vote cast with result: {result}")
+                await self._send_notification(f"Vote cast on proposal {proposal_id} ({vote_option}). Tx: {result.get('tx_hash', 'N/A')}", level="success")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error casting vote: {e}")
+            await self._send_notification(f"Failed to cast vote: {e}", level="error")
+            return {"error": str(e)}
+
+    async def reflect_on_interaction(self, intent: str, outcome: Dict[str, Any]):
+        """
+        AMOR Guardian's adaptive reflection mechanism.
+        This method would typically leverage the LLM for deeper analysis and
+        store insights into long-term memory.
+
+        Args:
+            intent (str): The original intent or action request.
+            outcome (Dict[str, Any]): The result or outcome of the action.
+        """
+        reflection_prompt = f"""
+        Given the intent: '{intent}'
+        And the outcome: {outcome}
+
+        Analyze the following:
+        1. Was the outcome as expected?
+        2. What were the key factors contributing to the outcome (success or failure)?
+        3. What multi-chain effects, if any, could this interaction have?
+        4. How can similar interactions be optimized or improved in the future?
+        5. What does this interaction imply for collective awakening in the DAO?
+        """
+        try:
+            logger.info("Initiating reflection process for the interaction...")
+            reflection_response = await self.agent.llm_chat(reflection_prompt)
+            logger.info("Reflection complete. Storing insights.")
+            # Store reflection in long-term memory
+            await self.agent.memory.store_long_term_memory("interaction_reflection", {
+                "timestamp": self.agent.w3.eth.get_block('latest').timestamp,
+                "intent": intent,
+                "outcome": outcome,
+                "reflection": reflection_response
+            })
+            await self._send_notification("Agent completed reflection on a recent interaction.", level="debug")
+            return {"reflection": reflection_response}
+        except Exception as e:
+            logger.error(f"Error during reflection: {e}")
+            await self._send_notification(f"Failed to complete reflection: {e}", level="error")
+            return {"error": str(e)}
+
+    async def run(self):
+        """
+        The main execution loop for the AMOR Guardian agent.
+        This agent is designed to be reactive to prompts and human interaction,
+        so `run` would primarily set up listening mechanisms or process a queue of intents.
+        """
+        logger.info("AMOR Guardian main run method initiated. Awaiting instructions...")
+        await self._send_notification("AMOR Guardian is online and awaiting instructions.", level="info")
+
+        # Example: Continuously monitor for new governance proposals or external requests
+        # In a real Spoon OS setup, this would be handled by the framework's event listeners
+        # or by specific task queues.
+        while True:
+            # This is a placeholder for continuous monitoring or processing external prompts.
+            # In Spoon OS, this agent would typically respond to messages/intents from the Nexus.
+            # For demonstration, we'll just sleep.
+            await self.agent.memory.store_short_term_memory("heartbeat", {"timestamp": self.agent.w3.eth.get_block('latest').timestamp})
+            # Await incoming prompts/commands from the Spoon OS framework
+            # This would usually involve a method like `self.agent.receive_intent()`
+            # For now, we simulate an idle state.
+            await self.agent.w3.eth.wait_for_block(self.agent.w3.eth.block_number + 1) # Wait for a new block
+            logger.debug("AMOR Guardian is alive and monitoring...")
+            await self._send_notification("AMOR Guardian is periodically checking for tasks.", level="debug")
+
+
+if __name__ == "__main__":
+    # Example Usage:
+    # Set environment variables or ensure they are loaded for production.
+    # For development, you can hardcode them, but this is NOT recommended for production.
+    WALLET_ADDRESS = os.getenv("AMOR_GUARDIAN_WALLET_ADDRESS", "0xYourAgentWalletAddressHere")
+    PRIVATE_KEY = os.getenv("AMOR_GUARDIAN_PRIVATE_KEY", "0xYourAgentPrivateKeyHere")
+    RPC_URL = os.getenv("AMOR_GUARDIAN_RPC_URL", "https://rpc.ankr.com/eth_goerli") # Example Goerli RPC
+    CHAIN_ID = int(os.getenv("AMOR_GUARDIAN_CHAIN_ID", 5)) # Example Goerli Chain ID
+
+    if "YourAgentWalletAddressHere" in WALLET_ADDRESS or "YourAgentPrivateKeyHere" in PRIVATE_KEY:
+        logger.warning("Please configure WALLET_ADDRESS and PRIVATE_KEY environment variables.")
+        logger.warning("Falling back to dummy values for demonstration. Transactions will fail.")
+        # Create dummy values for demonstration if actual ones are not set
+        from eth_account import Account
+        Account.enable_unaudited_hdwallet_features()
+        acct = Account.create()
+        WALLET_ADDRESS = acct.address
+        PRIVATE_KEY = acct.key.hex()
+        # Make sure the RPC and chain ID are for a testnet if using dummy keys
+        RPC_URL = "https://rpc.ankr.com/eth_sepolia"
+        CHAIN_ID = 11155111
+        logger.warning(f"Using generated wallet: {WALLET_ADDRESS} on Sepolia for demonstration.")
+
+
+    agent = AMORGuardian(
+        wallet_address=WALLET_ADDRESS,
+        private_key=PRIVATE_KEY,
+        rpc_url=RPC_URL,
+        chain_id=CHAIN_ID
+    )
+
+    import asyncio
+
+    async def main():
+        logger.info("[CORE::IGNITE] AMOR Guardian is activating...")
+        current_state = await agent.get_current_state()
+        logger.info(f"Agent's initial state: {current_state}")
+
+        # Example: Get token price (using web3_tools directly or via agent's LLM)
+        try:
+            eth_price = await web3_tools.get_token_price("ETH", "USD")
+            logger.info(f"Current ETH price: {eth_price['price']} USD")
+            await agent._send_notification(f"Current ETH price detected: {eth_price['price']} USD", level="info")
+        except Exception as e:
+            logger.error(f"Could not fetch ETH price: {e}")
+
+        # Example: Simulate a contract call (ERC-20 transfer)
+        # Dummy ABI for a simple ERC-20 transfer function
+        ERC20_ABI = [
+            {
+                "constant": False,
+                "inputs": [
+                    {"name": "_to", "type": "address"},
+                    {"name": "_value", "type": "uint256"}
+                ],
+                "name": "transfer",
+                "outputs": [{"name": "", "type": "bool"}],
+                "type": "function"
+            }
+        ]
+        DUMMY_TOKEN_ADDRESS = "0xYourERC20TokenAddressHereIfAny" # Replace with a testnet ERC20
+
+        if "YourERC20TokenAddressHereIfAny" not in DUMMY_TOKEN_ADDRESS:
+            logger.info("Attempting example ERC-20 transfer simulation...")
+            sim_transfer_result = await agent.execute_contract_call(
+                contract_address=DUMMY_TOKEN_ADDRESS,
+                abi=ERC20_ABI,
+                function_name="transfer",
+                function_args={"_to": "0xRecipientAddressHere", "_value": 100 * (10**18)}, # 100 tokens, assuming 18 decimals
+                simulate=True
+            )
+            logger.info(f"Simulated ERC-20 transfer result: {sim_transfer_result}")
+        else:
+            logger.info("Skipping ERC-20 transfer simulation due to unconfigured DUMMY_TOKEN_ADDRESS.")
+
+        # Example: Propose a governance action (simulated)
+        # Assuming a generic DAO `propose` function that takes targets, values, calldatas, description
+        DAO_GOVERNANCE_ABI = [
+            {
+                "inputs": [
+                    {"internalType": "address[]", "name": "targets", "type": "address[]"},
+                    {"internalType": "uint256[]", "name": "values", "type": "uint256[]"},
+                    {"internalType": "bytes[]", "name": "calldatas", "type": "bytes[]"},
+                    {"internalType": "string", "name": "description", "type": "string"},
+                ],
+                "name": "propose",
+                "outputs": [{"internalType": "uint256", "name": "proposalId", "type": "uint256"}],
+                "stateMutability": "nonpayable",
+                "type": "function",
+            }
+        ]
+        DUMMY_DAO_ADDRESS = "0xYourDaoGovernanceAddressHere"
+
+        if "YourDaoGovernanceAddressHere" not in DUMMY_DAO_ADDRESS:
+            logger.info("Attempting example governance proposal simulation...")
+            proposal_details = {
+                "targets": [WALLET_ADDRESS], # Example: calling a function on its own contract
+                "values": [0],
+                "calldatas": [b''], # No specific calldata for this example
+                "description": "AMOR Guardian's first simulated governance proposal: Test of existence."
+            }
+            proposal_result = await agent.propose_governance_action(
+                dao_contract_address=DUMMY_DAO_ADDRESS,
+                dao_abi=DAO_GOVERNANCE_ABI,
+                proposal_details=proposal_details,
+                simulation_only=True
+            )
+            logger.info(f"Simulated governance proposal result: {proposal_result}")
+        else:
+             logger.info("Skipping governance proposal simulation. Configure DUMMY_DAO_ADDRESS to enable.")
+
+        # Agent will now enter its continuous monitoring/response loop
+        await agent.run()
+
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("AMOR Guardian shutting down gracefully.")
+    except Exception as e:
+        logger.critical(f"AMOR Guardian encountered a critical error: {e}")
