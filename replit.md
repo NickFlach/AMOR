@@ -49,7 +49,10 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 4. **Governance**: View proposals, cast votes (For/Against/Abstain)
 5. **Self-Delegation**: Activate voting power by delegating to self
 6. **Dark/Light Mode**: Theme toggle with system preference detection
-7. **AMOR Guardian**: AI-powered assistant for the Consciousness Nexus ecosystem
+7. **AMOR Guardian**: AI-powered assistant with SpoonOS-inspired architecture
+   - Real-time on-chain data queries via tool-calling
+   - Wallet-aware personalized responses
+   - Live blockchain statistics (staking, governance parameters)
 
 ## Tech Stack
 - **Frontend**: React, TypeScript, Vite, TailwindCSS, shadcn/ui
