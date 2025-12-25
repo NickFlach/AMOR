@@ -94,15 +94,28 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   }, [address, readProvider]);
 
   const connect = useCallback(async () => {
+    console.log("Connect requested. Checking for window.ethereum...", !!window.ethereum);
+    
     if (typeof window === "undefined" || !window.ethereum) {
-      alert("Please install MetaMask or another Web3 wallet to connect.");
-      return;
+      // Direct check for MetaMask-specific property if ethereum is missing or being masked
+      const isMetaMaskAvailable = window.ethereum || (window as any).metamask;
+      if (!isMetaMaskAvailable) {
+        alert("MetaMask not detected. Please ensure it is installed and enabled in your browser extensions.");
+        return;
+      }
     }
 
     setIsConnecting(true);
     try {
-      const browserProvider = new ethers.BrowserProvider(window.ethereum);
+      // Use the standard provider initialization
+      const browserProvider = new ethers.BrowserProvider(window.ethereum!);
+      
+      // Some browsers/extensions might delay initialization
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const accounts = await browserProvider.send("eth_requestAccounts", []);
+      console.log("Connected accounts:", accounts);
+      
       const network = await browserProvider.getNetwork();
       const signerInstance = await browserProvider.getSigner();
       
@@ -111,7 +124,8 @@ export function Web3Provider({ children }: Web3ProviderProps) {
       setAddress(accounts[0]);
       setChainId(Number(network.chainId));
     } catch (error) {
-      console.error("Connection error:", error);
+      console.error("Connection error details:", error);
+      alert("Failed to connect to wallet. See console for details.");
     } finally {
       setIsConnecting(false);
     }
@@ -161,7 +175,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   useEffect(() => {
     if (typeof window === "undefined" || !window.ethereum) return;
 
-    const handleAccountsChanged = (accounts: string[]) => {
+    const handleAccountsChanged = (accounts: any) => {
       if (accounts.length === 0) {
         disconnect();
       } else {
@@ -169,8 +183,8 @@ export function Web3Provider({ children }: Web3ProviderProps) {
       }
     };
 
-    const handleChainChanged = (newChainId: string) => {
-      setChainId(parseInt(newChainId, 16));
+    const handleChainChanged = (newChainId: any) => {
+      setChainId(parseInt(newChainId as string, 16));
     };
 
     window.ethereum.on("accountsChanged", handleAccountsChanged);

@@ -72,23 +72,30 @@ export function Header() {
             )}
 
             {!isConnected ? (
-              <Button
-                onClick={connect}
-                disabled={isConnecting}
-                data-testid="button-connect-wallet"
-              >
-                {isConnecting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Connecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Wallet className="h-4 w-4" />
-                    <span>Connect Wallet</span>
-                  </>
+              <div className="flex flex-col items-end gap-1">
+                <Button
+                  onClick={connect}
+                  disabled={isConnecting}
+                  data-testid="button-connect-wallet"
+                >
+                  {isConnecting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Connecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-4 w-4" />
+                      <span>Connect Wallet</span>
+                    </>
+                  )}
+                </Button>
+                {typeof window !== "undefined" && !window.ethereum && (
+                  <span className="text-[10px] text-destructive animate-pulse px-1">
+                    MetaMask not detected
+                  </span>
                 )}
-              </Button>
+              </div>
             ) : !isCorrectNetwork ? (
               <Button
                 onClick={switchNetwork}
