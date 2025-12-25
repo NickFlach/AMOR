@@ -91,9 +91,20 @@ export function Header() {
                   )}
                 </Button>
                 {typeof window !== "undefined" && !window.ethereum && (
-                  <span className="text-[10px] font-bold text-destructive animate-pulse bg-destructive/10 px-2 py-0.5 rounded-sm border border-destructive/20 mt-1">
-                    EXTENSION NOT DETECTED
-                  </span>
+                  <div className="flex flex-col items-end gap-1 mt-1">
+                    <span className="text-[10px] font-bold text-destructive animate-pulse bg-destructive/10 px-2 py-0.5 rounded-sm border border-destructive/20">
+                      EXTENSION NOT DETECTED
+                    </span>
+                    <a 
+                      href={window.location.href} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-[9px] text-muted-foreground hover:text-primary underline flex items-center gap-1"
+                    >
+                      <ExternalLink className="h-2 w-2" />
+                      Open in New Tab for MetaMask
+                    </a>
+                  </div>
                 )}
               </div>
             ) : !isCorrectNetwork ? (

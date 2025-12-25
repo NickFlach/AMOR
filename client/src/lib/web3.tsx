@@ -94,21 +94,23 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   }, [address, readProvider]);
 
   const connect = useCallback(async () => {
-    console.log("Connect requested. Checking for window.ethereum...", !!window.ethereum);
+    console.log("Connect requested. Checking for providers...");
     
-    if (typeof window === "undefined" || !window.ethereum) {
-      // Direct check for MetaMask-specific property if ethereum is missing or being masked
-      const isMetaMaskAvailable = window.ethereum || (window as any).metamask;
-      if (!isMetaMaskAvailable) {
-        alert("MetaMask not detected. Please ensure it is installed and enabled in your browser extensions.");
-        return;
-      }
+    let ethProvider = window.ethereum;
+    
+    // Check for EIP-6963 providers if window.ethereum is missing
+    if (!ethProvider && (window as any).ethereum_providers) {
+      ethProvider = (window as any).ethereum_providers[0];
+    }
+
+    if (typeof window === "undefined" || !ethProvider) {
+      alert("Wallet not detected. If you have MetaMask installed, try opening this page in a new tab.");
+      return;
     }
 
     setIsConnecting(true);
     try {
-      // Use the standard provider initialization
-      const browserProvider = new ethers.BrowserProvider(window.ethereum!);
+      const browserProvider = new ethers.BrowserProvider(ethProvider);
       
       // Some browsers/extensions might delay initialization
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -125,7 +127,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
       setChainId(Number(network.chainId));
     } catch (error) {
       console.error("Connection error details:", error);
-      alert("Failed to connect to wallet. See console for details.");
+      alert("Failed to connect to wallet. Ensure your wallet is unlocked and try again.");
     } finally {
       setIsConnecting(false);
     }
