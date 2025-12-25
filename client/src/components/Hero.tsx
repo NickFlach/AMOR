@@ -1,10 +1,9 @@
-import { ArrowRight, TrendingUp, Users, Vote, ExternalLink, Wallet, Shield, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, TrendingUp, Vote, ExternalLink, Wallet, Shield, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useWeb3 } from "@/lib/web3";
 import { CONTRACTS, getExplorerLink } from "@/lib/contracts";
-import { useState, useEffect } from "react";
 
 interface StatCardProps {
   icon: typeof TrendingUp;
@@ -35,32 +34,6 @@ function StatCard({ icon: Icon, label, value, subValue, highlight }: StatCardPro
       </CardContent>
     </Card>
   );
-}
-
-function AnimatedCounter({ end, suffix = "", duration = 2000 }: { end: number; suffix?: string; duration?: number }) {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let startTime: number;
-    let animationFrame: number;
-
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      setCount(Math.floor(easeOutQuart * end));
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate);
-      }
-    };
-
-    animationFrame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [end, duration]);
-
-  return <>{count.toLocaleString()}{suffix}</>;
 }
 
 export function Hero() {
@@ -172,37 +145,11 @@ export function Hero() {
             highlight={isConnected && parseFloat(votingPower) > 0}
           />
           <StatCard
-            icon={Users}
+            icon={Zap}
             label="Network"
             value="Neo X Mainnet"
             subValue="Chain ID: 47763"
           />
-        </div>
-
-        <div className="mt-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            Trusted by the AMOR community
-          </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-8">
-            <div className="text-center">
-              <p className="text-2xl font-bold font-mono">
-                <AnimatedCounter end={1000} suffix="+" />
-              </p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Token Holders</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold font-mono">
-                <AnimatedCounter end={500000} suffix="+" />
-              </p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">AMOR Staked</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold font-mono">
-                <AnimatedCounter end={25} suffix="+" />
-              </p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Proposals Created</p>
-            </div>
-          </div>
         </div>
       </div>
     </section>
