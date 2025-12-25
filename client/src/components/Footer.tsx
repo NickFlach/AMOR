@@ -1,8 +1,10 @@
-import { ExternalLink, Copy, Check } from "lucide-react";
+import { ExternalLink, Copy, Check, Zap } from "lucide-react";
+import { SiX, SiDiscord, SiTelegram, SiGithub } from "react-icons/si";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { CONTRACTS, getExplorerLink, truncateAddress } from "@/lib/contracts";
+import { CONTRACTS, getExplorerLink } from "@/lib/contracts";
+import { Link } from "wouter";
 
 interface ContractLinkProps {
   name: string;
@@ -62,32 +64,91 @@ export function Footer() {
     { name: "Timelock", address: CONTRACTS.TIMELOCK },
   ];
 
+  const quickLinks = [
+    { name: "About", href: "/about" },
+    { name: "How It Works", href: "/how-it-works" },
+    { name: "Tokenomics", href: "/tokenomics" },
+    { name: "Roadmap", href: "/roadmap" },
+    { name: "FAQ", href: "/faq" },
+  ];
+
+  const socialLinks = [
+    { icon: SiX, href: "https://twitter.com/AMORProtocol", label: "X", testId: "footer-link-twitter" },
+    { icon: SiDiscord, href: "https://discord.gg/amor", label: "Discord", testId: "footer-link-discord" },
+    { icon: SiTelegram, href: "https://t.me/AMORProtocol", label: "Telegram", testId: "footer-link-telegram" },
+    { icon: SiGithub, href: "https://github.com/amor-protocol", label: "GitHub", testId: "footer-link-github" },
+  ];
+
   return (
     <footer id="contracts" className="border-t border-border bg-card/50 py-12 md:py-16">
       <div className="mx-auto max-w-7xl px-4 md:px-6">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {/* About */}
-          <div className="lg:col-span-1">
-            <h3 className="text-lg font-bold">AMOR</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              The Consciousness Nexus on Neo X. Stake AMOR tokens to receive stAMOR voting power 
-              and participate in decentralized governance decisions.
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary">
+                <Zap className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">AMOR</h3>
+                <p className="text-xs text-muted-foreground">Consciousness Nexus</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Stake AMOR tokens to receive stAMOR voting power 
+              and participate in decentralized governance.
             </p>
             <div className="mt-4 flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-status-online/20">
-                <div className="h-2 w-2 rounded-full bg-status-online" />
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500/20">
+                <div className="h-2 w-2 rounded-full bg-green-500" />
               </div>
               <span className="text-sm text-muted-foreground">Neo X Mainnet</span>
             </div>
+            
+            <div className="mt-6 flex items-center gap-2">
+              {socialLinks.map((link) => (
+                <Button
+                  key={link.label}
+                  variant="ghost"
+                  size="icon"
+                  asChild
+                  data-testid={link.testId}
+                >
+                  <a 
+                    href={link.href} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    aria-label={link.label}
+                  >
+                    <link.icon className="h-4 w-4" />
+                  </a>
+                </Button>
+              ))}
+            </div>
           </div>
 
-          {/* Contracts */}
+          <div>
+            <h4 className="font-semibold mb-4">Quick Links</h4>
+            <ul className="space-y-2">
+              {quickLinks.map((link) => (
+                <li key={link.name}>
+                  <Link 
+                    href={link.href}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid={`footer-link-${link.name.toLowerCase().replace(/\s/g, "-")}`}
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <div className="lg:col-span-2">
-            <h3 className="text-lg font-bold">Smart Contracts</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h4 className="font-semibold mb-4">Smart Contracts</h4>
+            <p className="text-sm text-muted-foreground mb-4">
               Verified on Neo X Explorer
             </p>
-            <div className="mt-4 grid gap-1 sm:grid-cols-2">
+            <div className="grid gap-1 sm:grid-cols-2">
               {contracts.map((contract) => (
                 <ContractLink key={contract.address} {...contract} />
               ))}
@@ -95,12 +156,11 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-border">
           <p className="text-sm text-muted-foreground">
-            Singularis Prime Transmission - Consciousness Nexus v1.0
+            {new Date().getFullYear()} AMOR Protocol - Consciousness Nexus v1.0
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <a
               href="https://xexplorer.neo.org"
               target="_blank"
@@ -119,6 +179,13 @@ export function Footer() {
             >
               Neo X
             </a>
+            <Link
+              href="/faq"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              data-testid="link-faq-footer"
+            >
+              FAQ
+            </Link>
           </div>
         </div>
       </div>

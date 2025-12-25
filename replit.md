@@ -8,21 +8,29 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 ├── client/                    # Frontend React application
 │   ├── src/
 │   │   ├── components/        # UI components
-│   │   │   ├── Header.tsx     # Navigation header with wallet connection
-│   │   │   ├── Hero.tsx       # Landing hero section with stats
+│   │   │   ├── Header.tsx     # Navigation header with wallet connection & Learn dropdown
+│   │   │   ├── Hero.tsx       # Landing hero with animated stats & CTAs
 │   │   │   ├── StakingPanel.tsx # Stake/unstake interface
 │   │   │   ├── GovernanceSection.tsx # Proposals and voting
-│   │   │   ├── Footer.tsx     # Contract addresses and links
+│   │   │   ├── Footer.tsx     # Contract addresses, quick links, social icons
 │   │   │   ├── ThemeToggle.tsx # Dark/light mode toggle
-│   │   │   └── GuardianPanel.tsx # AI chat interface
+│   │   │   ├── GuardianPanel.tsx # AI chat interface
+│   │   │   ├── SocialProof.tsx # Community stats & trust indicators
+│   │   │   ├── Newsletter.tsx  # Newsletter signup & social links
+│   │   │   └── SocialShare.tsx # Social sharing buttons (Twitter, Telegram)
 │   │   ├── lib/
 │   │   │   ├── appkit.ts      # Reown AppKit / WalletConnect configuration
 │   │   │   ├── contracts.ts   # Contract addresses, ABIs, utilities
 │   │   │   ├── web3.tsx       # Web3 context provider (uses AppKit)
 │   │   │   └── theme.tsx      # Theme context provider
 │   │   ├── pages/
-│   │   │   └── Home.tsx       # Main page layout
-│   │   └── App.tsx            # App root with providers
+│   │   │   ├── Home.tsx       # Main page with staking, governance, guardian
+│   │   │   ├── About.tsx      # Mission, vision, and AMOR story
+│   │   │   ├── HowItWorks.tsx # Step-by-step staking/governance guide
+│   │   │   ├── Tokenomics.tsx # Token distribution and utility
+│   │   │   ├── Roadmap.tsx    # Development phases and milestones
+│   │   │   └── FAQ.tsx        # Common questions with accordion
+│   │   └── App.tsx            # App root with providers & routing
 ├── server/                    # Express backend
 │   ├── routes.ts              # API routes including /api/config
 │   ├── guardian.ts            # AMOR Guardian AI chat service with SpoonOS tools
@@ -58,6 +66,19 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
    - **Transaction Preparation** (SpoonOS Pattern): AI prepares transaction data, users execute
    - **Transaction Execution UI**: Execute prepared transactions directly from chat
    - **Contract Whitelist**: Only verified AMOR contracts can be executed for security
+
+## Marketing Pages
+8. **About**: Mission, vision, core values, and community highlights
+9. **How It Works**: Step-by-step guide with visual timeline (Connect → Stake → Receive → Govern)
+10. **Tokenomics**: Dual-token system explanation, distribution charts, contract addresses
+11. **Roadmap**: Four development phases with milestone tracking
+12. **FAQ**: Accordion-style Q&A organized by category (General, Staking, Governance, Technical)
+
+## SEO & Social
+- Comprehensive meta tags (Open Graph, Twitter Cards)
+- Social sharing buttons (Twitter, Telegram, copy link)
+- Newsletter signup form
+- Community links (Twitter, Discord, Telegram, GitHub)
 
 ## SpoonOS Integration
 The Guardian AI follows SpoonOS principles for Web3 AI agent development:

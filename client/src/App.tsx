@@ -8,6 +8,11 @@ import { ThemeProvider } from "@/lib/theme";
 import { Web3Provider } from "@/lib/web3";
 import { initializeAppKit } from "@/lib/appkit";
 import Home from "@/pages/Home";
+import About from "@/pages/About";
+import HowItWorks from "@/pages/HowItWorks";
+import Tokenomics from "@/pages/Tokenomics";
+import Roadmap from "@/pages/Roadmap";
+import FAQ from "@/pages/FAQ";
 import NotFound from "@/pages/not-found";
 import { Loader2 } from "lucide-react";
 
@@ -15,6 +20,11 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/about" component={About} />
+      <Route path="/how-it-works" component={HowItWorks} />
+      <Route path="/tokenomics" component={Tokenomics} />
+      <Route path="/roadmap" component={Roadmap} />
+      <Route path="/faq" component={FAQ} />
       <Route component={NotFound} />
     </Switch>
   );
