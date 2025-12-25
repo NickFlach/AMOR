@@ -13,7 +13,8 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 │   │   │   ├── StakingPanel.tsx # Stake/unstake interface
 │   │   │   ├── GovernanceSection.tsx # Proposals and voting
 │   │   │   ├── Footer.tsx     # Contract addresses and links
-│   │   │   └── ThemeToggle.tsx # Dark/light mode toggle
+│   │   │   ├── ThemeToggle.tsx # Dark/light mode toggle
+│   │   │   └── GuardianPanel.tsx # AI chat interface
 │   │   ├── lib/
 │   │   │   ├── appkit.ts      # Reown AppKit / WalletConnect configuration
 │   │   │   ├── contracts.ts   # Contract addresses, ABIs, utilities
@@ -23,7 +24,8 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 │   │   │   └── Home.tsx       # Main page layout
 │   │   └── App.tsx            # App root with providers
 ├── server/                    # Express backend
-│   └── routes.ts              # API routes including /api/config
+│   ├── routes.ts              # API routes including /api/config
+│   └── guardian.ts            # AMOR Guardian AI chat service
 ├── shared/                    # Shared types and schemas
 └── design_guidelines.md       # UI/UX design guidelines
 ```
@@ -47,6 +49,7 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 4. **Governance**: View proposals, cast votes (For/Against/Abstain)
 5. **Self-Delegation**: Activate voting power by delegating to self
 6. **Dark/Light Mode**: Theme toggle with system preference detection
+7. **AMOR Guardian**: AI-powered assistant for the Consciousness Nexus ecosystem
 
 ## Tech Stack
 - **Frontend**: React, TypeScript, Vite, TailwindCSS, shadcn/ui

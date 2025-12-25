@@ -75,3 +75,31 @@ export const ProposalState = {
 } as const;
 
 export type ProposalStateType = (typeof ProposalState)[keyof typeof ProposalState];
+
+// Guardian AI Types
+export interface GuardianMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: number;
+}
+
+export interface GuardianState {
+  walletAddress: string | null;
+  chainId: number;
+  isConnected: boolean;
+  nativeBalance: string;
+  gasPrice: string;
+}
+
+export interface GuardianAction {
+  type: "stake" | "unstake" | "vote" | "delegate" | "propose" | "query";
+  params: Record<string, unknown>;
+  simulated: boolean;
+}
+
+export interface GuardianResponse {
+  message: string;
+  suggestedAction?: GuardianAction;
+  state?: Partial<GuardianState>;
+}

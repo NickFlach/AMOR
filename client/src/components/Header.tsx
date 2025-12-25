@@ -50,6 +50,13 @@ export function Header() {
               Governance
             </a>
             <a 
+              href="#guardian" 
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              data-testid="link-guardian"
+            >
+              Guardian
+            </a>
+            <a 
               href="#contracts" 
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               data-testid="link-contracts"
