@@ -51,6 +51,9 @@ export async function initializeAppKit(): Promise<ReturnType<typeof createAppKit
         url: typeof window !== 'undefined' ? window.location.origin : 'https://amor.app',
         icons: ['https://avatars.githubusercontent.com/u/37784886'],
       },
+      featuredWalletIds: [
+        'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96', // MetaMask
+      ],
       features: {
         analytics: false,
       },

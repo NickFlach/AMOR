@@ -129,9 +129,10 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     if (!appKit) return;
     
     try {
-      await appKit.open({ view: 'Networks' });
+      await appKit.switchNetwork({ id: NEO_X_CHAIN_ID, name: 'Neo X Mainnet' } as Parameters<typeof appKit.switchNetwork>[0]);
     } catch (error) {
       console.error("Network switch error:", error);
+      await appKit.open({ view: 'Networks' });
     }
   }, []);
 
@@ -199,6 +200,12 @@ export function Web3Provider({ children }: Web3ProviderProps) {
       refreshBalances();
     }
   }, [isConnected, isCorrectNetwork, refreshBalances]);
+
+  useEffect(() => {
+    if (isConnected && !isCorrectNetwork && chainId !== null) {
+      switchNetwork();
+    }
+  }, [isConnected, isCorrectNetwork, chainId, switchNetwork]);
 
   const contextValue = useMemo(() => ({
     address,
