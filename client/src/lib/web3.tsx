@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { ethers } from "ethers";
 import { NEO_X_CHAIN_ID, NEO_X_RPC_URL, CONTRACTS, ERC20_ABI, ST_AMOR_ABI, STAKING_MANAGER_ABI, GOVERNOR_ABI } from "./contracts";
+import { getAppKit } from "./appkit";
 
-// Singleton read-only provider for RPC calls
 let readProviderInstance: ethers.JsonRpcProvider | null = null;
 
 function getReadProvider(): ethers.JsonRpcProvider {
@@ -69,71 +69,51 @@ export function Web3Provider({ children }: Web3ProviderProps) {
     if (!address) return;
     
     try {
-      // AMOR balance
       const amorContract = new ethers.Contract(CONTRACTS.AMOR, ERC20_ABI, readProvider);
       const amorBal = await amorContract.balanceOf(address);
       setAmorBalance(ethers.formatEther(amorBal));
       
-      // stAMOR balance
       const stAmorContract = new ethers.Contract(CONTRACTS.ST_AMOR, ST_AMOR_ABI, readProvider);
       const stAmorBal = await stAmorContract.balanceOf(address);
       setStAmorBalance(ethers.formatEther(stAmorBal));
       
-      // Voting power
       const votes = await stAmorContract.getVotes(address);
       setVotingPower(ethers.formatEther(votes));
       
-      // Active stake
       const stakingContract = new ethers.Contract(CONTRACTS.STAKING_MANAGER, STAKING_MANAGER_ABI, readProvider);
       const stake = await stakingContract.getActiveStake(address);
       setActiveStake(ethers.formatEther(stake));
     } catch (error) {
-      // Silently fail - balances will show 0 until RPC is accessible
       console.debug("Could not fetch balances from RPC:", error);
     }
   }, [address, readProvider]);
 
   const connect = useCallback(async () => {
-    console.log("Connect requested. Checking for providers...");
-    
-    let ethProvider = window.ethereum;
-    
-    // Check for EIP-6963 providers if window.ethereum is missing
-    if (!ethProvider && (window as any).ethereum_providers) {
-      ethProvider = (window as any).ethereum_providers[0];
-    }
-
-    if (typeof window === "undefined" || !ethProvider) {
-      alert("Wallet not detected. If you have MetaMask installed, try opening this page in a new tab.");
+    const appKit = getAppKit();
+    if (!appKit) {
+      console.error("AppKit not initialized");
       return;
     }
-
+    
     setIsConnecting(true);
     try {
-      const browserProvider = new ethers.BrowserProvider(ethProvider);
-      
-      // Some browsers/extensions might delay initialization
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const accounts = await browserProvider.send("eth_requestAccounts", []);
-      console.log("Connected accounts:", accounts);
-      
-      const network = await browserProvider.getNetwork();
-      const signerInstance = await browserProvider.getSigner();
-      
-      setProvider(browserProvider);
-      setSigner(signerInstance);
-      setAddress(accounts[0]);
-      setChainId(Number(network.chainId));
+      await appKit.open();
     } catch (error) {
-      console.error("Connection error details:", error);
-      alert("Failed to connect to wallet. Ensure your wallet is unlocked and try again.");
+      console.error("Connection error:", error);
     } finally {
       setIsConnecting(false);
     }
   }, []);
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
+    const appKit = getAppKit();
+    if (!appKit) return;
+    
+    try {
+      await appKit.open({ view: 'Account' });
+    } catch (error) {
+      console.debug("Disconnect handled by modal");
+    }
     setAddress(null);
     setProvider(null);
     setSigner(null);
@@ -145,60 +125,75 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   }, []);
 
   const switchNetwork = useCallback(async () => {
-    if (!window.ethereum) return;
+    const appKit = getAppKit();
+    if (!appKit) return;
     
     try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: `0x${NEO_X_CHAIN_ID.toString(16)}` }],
-      });
-    } catch (switchError: unknown) {
-      // Chain not added, add it
-      if ((switchError as { code?: number })?.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: `0x${NEO_X_CHAIN_ID.toString(16)}`,
-              chainName: "Neo X Mainnet",
-              nativeCurrency: { name: "GAS", symbol: "GAS", decimals: 18 },
-              rpcUrls: [NEO_X_RPC_URL],
-              blockExplorerUrls: ["https://xexplorer.neo.org"],
-            }],
-          });
-        } catch (addError) {
-          console.error("Error adding network:", addError);
-        }
-      }
+      await appKit.open({ view: 'Networks' });
+    } catch (error) {
+      console.error("Network switch error:", error);
     }
   }, []);
 
-  // Listen for account and chain changes
   useEffect(() => {
-    if (typeof window === "undefined" || !window.ethereum) return;
+    const appKit = getAppKit();
+    if (!appKit) return;
 
-    const handleAccountsChanged = (accounts: any) => {
-      if (accounts.length === 0) {
-        disconnect();
-      } else {
-        setAddress(accounts[0]);
+    const unsubscribeState = appKit.subscribeState((state) => {
+      if (!state.open) {
+        const caipAddress = appKit.getCaipAddress();
+        if (caipAddress) {
+          const addressPart = caipAddress.split(':').pop();
+          if (addressPart) {
+            setAddress(addressPart);
+          }
+        } else {
+          setAddress(null);
+        }
+
+        const networkId = state.selectedNetworkId;
+        if (networkId && typeof networkId === 'string') {
+          const chainIdPart = networkId.split(':').pop();
+          if (chainIdPart) {
+            setChainId(Number(chainIdPart));
+          }
+        }
       }
-    };
+    });
 
-    const handleChainChanged = (newChainId: any) => {
-      setChainId(parseInt(newChainId as string, 16));
-    };
+    const unsubscribeProviders = appKit.subscribeProviders((providers: Record<string, unknown>) => {
+      const eip155Provider = providers["eip155"];
+      if (eip155Provider) {
+        const browserProvider = new ethers.BrowserProvider(eip155Provider as ethers.Eip1193Provider);
+        browserProvider.getSigner().then((signerInstance) => {
+          setProvider(browserProvider);
+          setSigner(signerInstance);
+          browserProvider.getNetwork().then((network) => {
+            setChainId(Number(network.chainId));
+          });
+        }).catch((error) => {
+          console.debug("Error getting signer:", error);
+        });
+      } else {
+        setProvider(null);
+        setSigner(null);
+      }
+    });
 
-    window.ethereum.on("accountsChanged", handleAccountsChanged);
-    window.ethereum.on("chainChanged", handleChainChanged);
+    const caipAddress = appKit.getCaipAddress();
+    if (caipAddress) {
+      const addressPart = caipAddress.split(':').pop();
+      if (addressPart) {
+        setAddress(addressPart);
+      }
+    }
 
     return () => {
-      window.ethereum?.removeListener("accountsChanged", handleAccountsChanged);
-      window.ethereum?.removeListener("chainChanged", handleChainChanged);
+      unsubscribeState?.();
+      unsubscribeProviders?.();
     };
-  }, [disconnect]);
+  }, []);
 
-  // Refresh balances when connected
   useEffect(() => {
     if (isConnected && isCorrectNetwork) {
       refreshBalances();
@@ -248,7 +243,6 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   );
 }
 
-// Hook to get contract instances - uses signer from context when available
 export function useContracts() {
   const { signer, readProvider } = useWeb3();
   
@@ -269,15 +263,4 @@ export function useContracts() {
   }, [signer, readProvider]);
   
   return { getAmorContract, getStAmorContract, getStakingContract, getGovernorContract };
-}
-
-// Extend Window type for ethereum
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-      on: (event: string, callback: (...args: unknown[]) => void) => void;
-      removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
-    };
-  }
 }

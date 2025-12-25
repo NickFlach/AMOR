@@ -1,4 +1,4 @@
-import { Wallet, ExternalLink, LogOut, AlertTriangle, Loader2, Zap } from "lucide-react";
+import { Wallet, ExternalLink, AlertTriangle, Loader2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "./ThemeToggle";
@@ -72,41 +72,23 @@ export function Header() {
             )}
 
             {!isConnected ? (
-              <div className="flex flex-col items-end gap-1">
-                <Button
-                  onClick={connect}
-                  disabled={isConnecting}
-                  data-testid="button-connect-wallet"
-                >
-                  {isConnecting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Connecting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="h-4 w-4" />
-                      <span>Connect Wallet</span>
-                    </>
-                  )}
-                </Button>
-                {typeof window !== "undefined" && !window.ethereum && (
-                  <div className="flex flex-col items-end gap-1 mt-1">
-                    <span className="text-[10px] font-bold text-destructive animate-pulse bg-destructive/10 px-2 py-0.5 rounded-sm border border-destructive/20">
-                      EXTENSION NOT DETECTED
-                    </span>
-                    <a 
-                      href={window.location.href} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-[9px] text-muted-foreground hover:text-primary underline flex items-center gap-1"
-                    >
-                      <ExternalLink className="h-2 w-2" />
-                      Open in New Tab for MetaMask
-                    </a>
-                  </div>
+              <Button
+                onClick={connect}
+                disabled={isConnecting}
+                data-testid="button-connect-wallet"
+              >
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="h-4 w-4" />
+                    <span>Connect Wallet</span>
+                  </>
                 )}
-              </div>
+              </Button>
             ) : !isCorrectNetwork ? (
               <Button
                 onClick={switchNetwork}
@@ -117,26 +99,15 @@ export function Header() {
                 <span>Switch to Neo X</span>
               </Button>
             ) : (
-              <div className="flex items-center gap-2">
-                <a
-                  href={getExplorerLink(address!)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 rounded-md bg-card px-3 py-2 text-sm font-mono transition-colors hover:bg-accent"
-                  data-testid="link-wallet-address"
-                >
-                  <span>{truncateAddress(address!)}</span>
-                  <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                </a>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={disconnect}
-                  data-testid="button-disconnect"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                onClick={disconnect}
+                data-testid="button-wallet-address"
+                className="font-mono"
+              >
+                <span>{truncateAddress(address!)}</span>
+                <ExternalLink className="h-3 w-3 text-muted-foreground" />
+              </Button>
             )}
 
             <ThemeToggle />
