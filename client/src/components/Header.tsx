@@ -91,8 +91,8 @@ export function Header() {
                   )}
                 </Button>
                 {typeof window !== "undefined" && !window.ethereum && (
-                  <span className="text-[10px] text-destructive animate-pulse px-1">
-                    MetaMask not detected
+                  <span className="text-[10px] font-bold text-destructive animate-pulse bg-destructive/10 px-2 py-0.5 rounded-sm border border-destructive/20 mt-1">
+                    EXTENSION NOT DETECTED
                   </span>
                 )}
               </div>
