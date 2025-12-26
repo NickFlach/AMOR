@@ -196,6 +196,7 @@ export function StakingPanel() {
               <p className="mt-2 max-w-md text-muted-foreground">
                 Connect your wallet to stake AMOR tokens and participate in governance.
               </p>
+              <appkit-button data-testid="button-connect-staking" />
             </CardContent>
           </Card>
         </div>
@@ -214,6 +215,7 @@ export function StakingPanel() {
               <p className="mt-2 max-w-md text-muted-foreground">
                 Please switch to Neo X Mainnet to use this application.
               </p>
+              <appkit-network-button data-testid="button-switch-network-staking" />
             </CardContent>
           </Card>
         </div>
