@@ -170,38 +170,41 @@ export default function About() {
         <section className="py-12 md:py-16">
           <div className="mx-auto max-w-7xl px-4 md:px-6">
             <div className="text-center mb-12">
-              <Badge variant="outline" className="mb-4">Community</Badge>
+              <Badge variant="outline" className="mb-4">Early Access</Badge>
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Join the AMOR Community
+                Be an Early Pioneer
               </h2>
               <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                AMOR is built and governed by its community. Join thousands of stakeholders shaping the future of decentralized governance.
+                AMOR is in its early stages on Neo X Mainnet. Join now to help shape the future of decentralized governance from the ground up.
               </p>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
               <Card className="text-center">
                 <CardContent className="pt-6">
-                  <p className="text-3xl font-bold font-mono mb-1" data-testid="stat-holders">1,000+</p>
-                  <p className="text-sm text-muted-foreground">Token Holders</p>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-chart-1/10 mx-auto mb-3">
+                    <Users className="h-6 w-6 text-chart-1" />
+                  </div>
+                  <p className="font-semibold mb-1">Founding Community</p>
+                  <p className="text-sm text-muted-foreground">Be among the first to stake and gain voting power</p>
                 </CardContent>
               </Card>
               <Card className="text-center">
                 <CardContent className="pt-6">
-                  <p className="text-3xl font-bold font-mono mb-1" data-testid="stat-stakers">500+</p>
-                  <p className="text-sm text-muted-foreground">Active Stakers</p>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-chart-2/10 mx-auto mb-3">
+                    <Shield className="h-6 w-6 text-chart-2" />
+                  </div>
+                  <p className="font-semibold mb-1">Shape Governance</p>
+                  <p className="text-sm text-muted-foreground">Your early participation influences protocol direction</p>
                 </CardContent>
               </Card>
-              <Card className="text-center">
+              <Card className="text-center sm:col-span-2 lg:col-span-1">
                 <CardContent className="pt-6">
-                  <p className="text-3xl font-bold font-mono mb-1" data-testid="stat-proposals">50+</p>
-                  <p className="text-sm text-muted-foreground">Proposals Created</p>
-                </CardContent>
-              </Card>
-              <Card className="text-center">
-                <CardContent className="pt-6">
-                  <p className="text-3xl font-bold font-mono mb-1" data-testid="stat-votes">10,000+</p>
-                  <p className="text-sm text-muted-foreground">Votes Cast</p>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-chart-3/10 mx-auto mb-3">
+                    <Heart className="h-6 w-6 text-chart-3" />
+                  </div>
+                  <p className="font-semibold mb-1">Community Driven</p>
+                  <p className="text-sm text-muted-foreground">Every decision made together, on-chain</p>
                 </CardContent>
               </Card>
             </div>
