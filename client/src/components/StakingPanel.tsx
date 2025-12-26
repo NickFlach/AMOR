@@ -72,6 +72,7 @@ export function StakingPanel() {
     setIsApproving(true);
     try {
       const amorContract = getAmorContract(true);
+      console.log("Approving AMOR for staking contract:", CONTRACTS.STAKING_MANAGER);
       const tx = await amorContract.approve(CONTRACTS.STAKING_MANAGER, ethers.MaxUint256);
       toast({
         title: "Approval Pending",
@@ -85,9 +86,10 @@ export function StakingPanel() {
       const allowed = await amorContract.allowance(address, CONTRACTS.STAKING_MANAGER);
       setAllowance(ethers.formatEther(allowed));
     } catch (error: unknown) {
+      console.error("Approval error:", error);
       toast({
         title: "Approval Failed",
-        description: (error as Error).message || "Transaction was rejected.",
+        description: parseContractError(error),
         variant: "destructive",
       });
     } finally {
@@ -95,13 +97,48 @@ export function StakingPanel() {
     }
   }
 
+  function parseContractError(error: unknown): string {
+    const err = error as { reason?: string; message?: string; shortMessage?: string; data?: string; info?: { error?: { message?: string } } };
+    
+    if (err.reason) return err.reason;
+    if (err.shortMessage) return err.shortMessage;
+    if (err.info?.error?.message) return err.info.error.message;
+    
+    const message = err.message || "";
+    
+    if (message.includes("user rejected")) return "Transaction was rejected by user.";
+    if (message.includes("insufficient funds")) return "Insufficient funds for gas.";
+    if (message.includes("AMORStaking: amount=0")) return "Amount must be greater than 0.";
+    if (message.includes("AMORStaking: insufficient")) return "Insufficient staked balance.";
+    if (message.includes("Pausable: paused") || message.includes("EnforcedPause")) return "Staking contract is currently paused.";
+    if (message.includes("ERC20: insufficient allowance") || message.includes("ERC20InsufficientAllowance")) return "Please approve AMOR tokens first.";
+    if (message.includes("ERC20: transfer amount exceeds balance") || message.includes("ERC20InsufficientBalance")) return "Insufficient AMOR balance.";
+    
+    if (message.length > 200) return message.substring(0, 200) + "...";
+    return message || "Transaction failed. Please try again.";
+  }
+
   async function handleStake() {
     if (!stakeAmount || !signer) return;
+    
+    const amount = parseFloat(stakeAmount);
+    if (amount <= 0) {
+      toast({ title: "Invalid Amount", description: "Please enter an amount greater than 0.", variant: "destructive" });
+      return;
+    }
+    if (amount > parseFloat(amorBalance)) {
+      toast({ title: "Insufficient Balance", description: `You only have ${parseFloat(amorBalance).toFixed(4)} AMOR available.`, variant: "destructive" });
+      return;
+    }
+    
     setIsStaking(true);
     try {
       const stakingContract = getStakingContract(true);
-      const amount = ethers.parseEther(stakeAmount);
-      const tx = await stakingContract.stake(amount);
+      const amountWei = ethers.parseEther(stakeAmount);
+      
+      console.log("Staking", stakeAmount, "AMOR to", CONTRACTS.STAKING_MANAGER);
+      
+      const tx = await stakingContract.stake(amountWei);
       toast({
         title: "Staking Pending",
         description: "Waiting for transaction confirmation...",
@@ -114,9 +151,10 @@ export function StakingPanel() {
       setStakeAmount("");
       await refreshBalances();
     } catch (error: unknown) {
+      console.error("Staking error:", error);
       toast({
         title: "Staking Failed",
-        description: (error as Error).message || "Transaction was rejected.",
+        description: parseContractError(error),
         variant: "destructive",
       });
     } finally {
