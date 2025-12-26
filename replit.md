@@ -42,10 +42,10 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 
 ## Smart Contracts (Neo X Mainnet)
 - **AMOR Token**: `0x7C833fe6b80465F956E2939aD6f03FFaC08f058e`
-- **stAMOR Token**: `0x58390f0883b176c6EbcDddE9527321F4b4E5c565`
-- **Staking Manager**: `0xae73C3390a145154Ab94935FB06f2Fc31A04E7d6`
+- **stAMOR Token**: `0x05fda76aa1e88e83EbB5f155Cd43BE2eb6718eAD`
+- **Staking Manager**: `0x58390f0883b176c6EbcDddE9527321F4b4E5c565`
+- **Timelock**: `0xae73C3390a145154Ab94935FB06f2Fc31A04E7d6`
 - **Governor**: `0xaf596B738B57B6Ac939f453Ce2201349F3105146`
-- **Timelock**: `0x05fda76aa1e88e83EbB5f155Cd43BE2eb6718eAD`
 
 ## Network Configuration
 - **Chain ID**: 47763
