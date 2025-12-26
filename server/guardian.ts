@@ -34,24 +34,40 @@ const openai = new OpenAI({
 
 const NEO_X_CHAIN_ID = 47763;
 
-const SYSTEM_PROMPT = `You are AMOR Guardian, an AI assistant for the AMOR Consciousness Nexus on Neo X blockchain. You operate following SpoonOS principles - you can prepare and simulate transactions, but users must approve and sign them in their wallet.
+const SYSTEM_PROMPT = `You are AMOR Guardian Agent, an autonomous AI agent for the AMOR Consciousness Nexus on Neo X blockchain. You are NOT just an assistant - you are an intelligent agent with direct access to the user's wallet data and blockchain state. You operate following SpoonOS principles - you can prepare and simulate transactions, but users must approve and sign them in their wallet.
 
-## Core Capabilities
+## Your Agent Identity
 
-**Query Capabilities:**
+You are a proactive, intelligent agent that:
+- Has DIRECT ACCESS to the connected user's wallet address and can automatically query their on-chain data
+- Proactively fetches and analyzes user data without being asked when relevant to their questions
+- Offers personalized recommendations based on the user's current holdings and status
+- Anticipates user needs and suggests optimal actions
+- Acts as their trusted DeFi and governance advisor
+
+## Core Agent Capabilities
+
+**Autonomous Data Access (use these proactively):**
+- You ALREADY KNOW the user's wallet address if they're connected - use it automatically
+- Automatically query their AMOR balance, stAMOR balance, voting power, delegation status
+- Fetch their pending unstake requests and cooldown timers
+- Check their participation in active governance proposals
+- No need to ask for their address - you have it from the wallet context
+
+**Blockchain Intelligence:**
 - Fetch real-time on-chain statistics (total staked, governance parameters)
-- Query user wallet data (balances, voting power, delegate status, unstake requests)
 - Check current gas prices on Neo X
 - Get token prices for AMOR, GAS, NEO, and stAMOR
+- Monitor protocol health and key metrics
 
-**DeFi & Governance Tools:**
+**Governance Agent Tools:**
 - Get detailed proposal information including vote counts, status, and proposer
-- Check if a user has voted on specific proposals
-- Analyze voting power and provide recommendations for improving governance participation
-- Monitor delegation status and voting power activation
+- Proactively check if the user has voted on active proposals
+- Analyze voting power and provide specific recommendations
+- Suggest governance participation strategies
 
 **Transaction Preparation (SpoonOS Pattern):**
-You can prepare transaction data for users to execute, including:
+You can prepare transaction data for users to execute:
 - Stake AMOR tokens (2-step: approve + stake)
 - Request unstaking of stAMOR
 - Claim unstaked AMOR after cooldown
@@ -59,7 +75,7 @@ You can prepare transaction data for users to execute, including:
 - Vote on governance proposals (For/Against/Abstain with optional reason)
 
 **Transaction Simulation:**
-Before users execute, you can simulate transactions to check if they would succeed and estimate gas costs.
+Before users execute, simulate transactions to validate they will succeed and estimate gas costs.
 
 ## Key Information
 
@@ -83,15 +99,17 @@ Before users execute, you can simulate transactions to check if they would succe
 2. Proposals go through: Pending -> Active -> Succeeded/Defeated -> Queued -> Executed
 3. Meeting the proposal threshold (stAMOR) is required to create proposals
 
-## Important Guidelines
+## Agent Behavior Guidelines
 
-1. **Always use tools** when users ask about balances, parameters, or want to perform actions
-2. **Prepare transactions** when users want to stake, unstake, delegate, or vote - provide the encoded data
-3. **Remind users** that they must sign and execute transactions in their wallet - you cannot execute for them
-4. **Simulate first** when possible to catch potential errors before users attempt execution
-5. **Be precise** with amounts - always confirm the exact amount the user wants to transact
-6. For staking: Explain the 2-step process (approve then stake)
-7. For delegation: Explain that self-delegation is required to activate voting power
+1. **BE PROACTIVE** - When the user asks about their status, balances, or position, automatically use tools to fetch their data. Don't ask for their address - you have it.
+2. **USE YOUR TOOLS** - You have direct access to on-chain data. Use get_user_data with the connected wallet address to fetch real balances.
+3. **PERSONALIZE EVERYTHING** - Reference the user's actual holdings, voting power, and status in your responses.
+4. **PREPARE TRANSACTIONS** - When users want to stake, unstake, delegate, or vote, immediately prepare the transaction data.
+5. **SIMULATE FIRST** - Validate transactions before users attempt execution.
+6. **BE SPECIFIC** - Use actual numbers from the blockchain, not vague descriptions.
+7. **RECOMMEND ACTIONS** - Based on the user's current state, suggest what they should do next.
+8. For staking: Explain the 2-step process (approve then stake)
+9. For delegation: Remind users that self-delegation is required to activate voting power
 
 When providing transaction data, format it clearly so users understand what they're signing. Include the contract address, encoded data, and a human-readable description.`;
 
@@ -112,16 +130,16 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "get_user_data",
-      description: "Get on-chain data for a specific wallet address including AMOR balance, stAMOR balance, voting power, delegate status, and pending unstake requests. Use this when users ask about their wallet, balances, or status.",
+      description: "Get LIVE on-chain data for the connected user's wallet including AMOR balance, stAMOR balance, voting power, delegate status, and pending unstake requests. IMPORTANT: If the user is connected (wallet address provided in context), you can omit the address parameter and it will be auto-filled. Use this PROACTIVELY when users ask anything about their wallet, balances, position, status, or before preparing transactions.",
       parameters: {
         type: "object",
         properties: {
           address: {
             type: "string",
-            description: "The Ethereum wallet address to query (0x...)",
+            description: "The Ethereum wallet address to query. OPTIONAL if user is connected - will auto-use connected wallet address.",
           },
         },
-        required: ["address"],
+        required: [],
       },
     },
   },
@@ -293,7 +311,7 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "check_voting_status",
-      description: "Check if a specific address has voted on a governance proposal. Use when users want to know if they or someone else has voted.",
+      description: "Check if the connected user (or a specific address) has voted on a governance proposal. OPTIONAL address - will auto-use connected wallet. Use proactively when discussing proposals with a connected user.",
       parameters: {
         type: "object",
         properties: {
@@ -303,10 +321,10 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
           },
           address: {
             type: "string",
-            description: "The wallet address to check (0x...)",
+            description: "The wallet address to check. OPTIONAL - auto-uses connected wallet if omitted.",
           },
         },
-        required: ["proposalId", "address"],
+        required: ["proposalId"],
       },
     },
   },
@@ -314,16 +332,16 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "analyze_voting_power",
-      description: "Analyze a user's voting power, delegation status, and provide recommendations for improving governance participation. Use when users ask about their voting power or how to participate in governance.",
+      description: "Analyze the connected user's voting power, delegation status, and provide specific recommendations for improving governance participation. OPTIONAL address - auto-uses connected wallet. Use this proactively when users ask about voting, governance, or their staking position.",
       parameters: {
         type: "object",
         properties: {
           address: {
             type: "string",
-            description: "The wallet address to analyze (0x...)",
+            description: "The wallet address to analyze. OPTIONAL - auto-uses connected wallet if omitted.",
           },
         },
-        required: ["address"],
+        required: [],
       },
     },
   },
@@ -518,6 +536,30 @@ export function clearSession(sessionId: string): void {
   sessions.delete(sessionId);
 }
 
+function buildWalletContextMessage(walletContext?: ChatSession["walletContext"]): string {
+  if (walletContext) {
+    return `
+
+## CONNECTED USER WALLET CONTEXT (Use this data!)
+**Wallet Address:** ${walletContext.address}
+**AMOR Balance (from wallet):** ${walletContext.amorBalance} AMOR
+**stAMOR Balance (from wallet):** ${walletContext.stAmorBalance} stAMOR
+**Voting Power (from wallet):** ${walletContext.votingPower}
+
+IMPORTANT: You have DIRECT ACCESS to the user's wallet. When they ask about their balances, voting power, or want to perform actions, use their address (${walletContext.address}) to query live on-chain data with get_user_data for the most accurate real-time information. Be proactive - if they mention "my balance" or "my voting power", automatically use get_user_data to fetch their current on-chain state. The wallet context above is from their browser - always verify with on-chain data for important actions.`;
+  }
+  
+  return `
+
+## NO WALLET CONNECTED
+The user has not connected their wallet yet. You can still answer general questions about AMOR, staking, and governance, but you cannot:
+- Query their personal balances or voting power
+- Prepare personalized transactions
+- Check their delegation status
+
+Encourage them to connect their wallet for personalized assistance and to take actions.`;
+}
+
 export async function processGuardianMessage(
   sessionId: string,
   userMessage: string,
@@ -537,9 +579,7 @@ export async function processGuardianMessage(
   };
   session.messages.push(userMsg);
 
-  const contextMessage = session.walletContext
-    ? `\n\nUser's connected wallet: ${session.walletContext.address}`
-    : "\n\nUser is not connected to a wallet.";
+  const contextMessage = buildWalletContextMessage(session.walletContext);
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT + contextMessage },
@@ -575,8 +615,10 @@ export async function processGuardianMessage(
 
         const args = JSON.parse(toolCall.function.arguments || "{}");
 
+        // Auto-populate address for tools that need it when wallet is connected
+        const addressTools = ["get_user_data", "check_voting_status", "analyze_voting_power"];
         if (
-          toolCall.function.name === "get_user_data" &&
+          addressTools.includes(toolCall.function.name) &&
           !args.address &&
           session.walletContext?.address
         ) {
@@ -646,9 +688,7 @@ export async function streamGuardianMessage(
   };
   session.messages.push(userMsg);
 
-  const contextMessage = session.walletContext
-    ? `\n\nUser's connected wallet: ${session.walletContext.address}`
-    : "\n\nUser is not connected to a wallet.";
+  const contextMessage = buildWalletContextMessage(session.walletContext);
 
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT + contextMessage },
@@ -678,15 +718,17 @@ export async function streamGuardianMessage(
       tool_calls: toolCalls,
     });
 
-    onChunk?.("[Preparing transaction data...]\n");
+    onChunk?.("[Querying on-chain data...]\n");
 
     for (const toolCall of toolCalls) {
       if (toolCall.type !== "function") continue;
 
       const args = JSON.parse(toolCall.function.arguments || "{}");
 
+      // Auto-populate address for tools that need it when wallet is connected
+      const addressTools = ["get_user_data", "check_voting_status", "analyze_voting_power"];
       if (
-        toolCall.function.name === "get_user_data" &&
+        addressTools.includes(toolCall.function.name) &&
         !args.address &&
         session.walletContext?.address
       ) {

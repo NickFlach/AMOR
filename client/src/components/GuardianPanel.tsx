@@ -383,7 +383,7 @@ function MessageBubble({
         {!isUser && (
           <div className="flex items-center gap-2 mb-2">
             <Bot className="h-4 w-4" />
-            <span className="text-xs font-medium">AMOR Guardian</span>
+            <span className="text-xs font-medium">AMOR Guardian Agent</span>
           </div>
         )}
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -559,9 +559,9 @@ export function GuardianPanel() {
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold md:text-3xl">AMOR Guardian</h2>
+              <h2 className="text-2xl font-bold md:text-3xl">AMOR Guardian Agent</h2>
               <p className="text-muted-foreground">
-                AI-powered assistant for the Consciousness Nexus
+                Autonomous AI agent with direct wallet access
               </p>
             </div>
           </div>
@@ -602,16 +602,16 @@ export function GuardianPanel() {
                 <div className="flex h-full flex-col items-center justify-center text-center">
                   <Bot className="mb-4 h-12 w-12 text-muted-foreground/50" />
                   <h3 className="font-medium text-muted-foreground">
-                    Welcome to AMOR Guardian
+                    Welcome to AMOR Guardian Agent
                   </h3>
                   <p className="mt-2 max-w-sm text-sm text-muted-foreground/80">
-                    Ask me about staking AMOR, governance voting, or how to participate in the Consciousness Nexus ecosystem.
+                    I have direct access to your wallet data. Ask me about your balances, voting power, or let me help you stake, delegate, and vote.
                   </p>
                   <div className="mt-4 flex flex-wrap justify-center gap-2">
                     {[
-                      "How do I stake AMOR?",
-                      "What is stAMOR?",
-                      "How does voting work?",
+                      "What is my current position?",
+                      "Stake 100 AMOR for me",
+                      "Analyze my voting power",
                     ].map((suggestion) => (
                       <Button
                         key={suggestion}
@@ -643,7 +643,7 @@ export function GuardianPanel() {
                       <div className="max-w-[85%] rounded-lg bg-muted p-3">
                         <div className="flex items-center gap-2 mb-2">
                           <Bot className="h-4 w-4" />
-                          <span className="text-xs font-medium">AMOR Guardian</span>
+                          <span className="text-xs font-medium">AMOR Guardian Agent</span>
                         </div>
                         <p className="text-sm whitespace-pre-wrap">{streamingContent}</p>
                       </div>
@@ -671,7 +671,7 @@ export function GuardianPanel() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about staking, governance, or the AMOR ecosystem..."
+                placeholder="Ask me anything - I can access your wallet data directly..."
                 className="min-h-[44px] max-h-32 resize-none"
                 disabled={isLoading}
                 data-testid="input-guardian-message"

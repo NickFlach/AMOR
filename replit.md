@@ -59,7 +59,10 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 4. **Governance**: View proposals, cast votes (For/Against/Abstain)
 5. **Self-Delegation**: Activate voting power by delegating to self
 6. **Dark/Light Mode**: Theme toggle with system preference detection
-7. **AMOR Guardian**: AI-powered assistant with full SpoonOS integration
+7. **AMOR Guardian Agent**: Autonomous AI agent with direct wallet access
+   - **Agentic Behavior**: Proactively fetches and uses wallet data without being asked
+   - **Direct Wallet Access**: Automatically queries connected wallet for balances, voting power, delegation status
+   - **Auto-Address Population**: Tools like get_user_data, analyze_voting_power auto-use connected wallet address
    - Real-time on-chain data queries via tool-calling
    - Wallet-aware personalized responses
    - Live blockchain statistics (staking, governance parameters)
