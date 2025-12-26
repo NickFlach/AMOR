@@ -16,7 +16,7 @@ const ERC20_INTERFACE = new ethers.Interface([
 
 const STAKING_MANAGER_INTERFACE = new ethers.Interface([
   "function stake(uint256 amount)",
-  "function requestUnstake(uint256 amount)",
+  "function requestUnstake(uint256 amount) returns (uint256 requestId)",
   "function claimUnstake(uint256 requestId)",
   "function cancelUnstake(uint256 requestId)",
 ]);

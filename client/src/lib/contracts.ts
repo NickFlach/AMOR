@@ -34,7 +34,7 @@ export const ERC20_ABI = [
   "event Approval(address indexed owner, address indexed spender, uint256 value)",
 ];
 
-// stAMOR (ERC20Votes) ABI
+// stAMOR (StakedAMOR.sol - ERC20 + ERC20Permit + ERC20Votes + AccessControl + Pausable) ABI
 export const ST_AMOR_ABI = [
   ...ERC20_ABI,
   "function delegates(address account) view returns (address)",
@@ -42,21 +42,31 @@ export const ST_AMOR_ABI = [
   "function getPastVotes(address account, uint256 timepoint) view returns (uint256)",
   "function getPastTotalSupply(uint256 timepoint) view returns (uint256)",
   "function delegate(address delegatee)",
+  "function delegateBySig(address delegatee, uint256 nonce, uint256 expiry, uint8 v, bytes32 r, bytes32 s)",
   "function CLOCK_MODE() view returns (string)",
   "function clock() view returns (uint48)",
+  "function nonces(address owner) view returns (uint256)",
+  "function STAKING_CONTRACT_ROLE() view returns (bytes32)",
+  "function PAUSER_ROLE() view returns (bytes32)",
+  "function DEFAULT_ADMIN_ROLE() view returns (bytes32)",
+  "function hasRole(bytes32 role, address account) view returns (bool)",
+  "function paused() view returns (bool)",
   "event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate)",
   "event DelegateVotesChanged(address indexed delegate, uint256 previousVotes, uint256 newVotes)",
 ];
 
-// Staking Manager ABI
+// AMORStaking Contract ABI (StakingAMOR.sol)
 export const STAKING_MANAGER_ABI = [
   "function WITHDRAWAL_DELAY() view returns (uint256)",
   "function amor() view returns (address)",
   "function stAmor() view returns (address)",
+  "function totalStaked() view returns (uint256)",
+  "function stakedBalance(address user) view returns (uint256)",
   "function getActiveStake(address user) view returns (uint256)",
+  "function requestCount(address user) view returns (uint256)",
   "function getRequest(address user, uint256 requestId) view returns (uint256 amount, uint256 requestedAt, uint256 unlockAt, bool claimed, bool cancelled)",
   "function stake(uint256 amount)",
-  "function requestUnstake(uint256 amount)",
+  "function requestUnstake(uint256 amount) returns (uint256 requestId)",
   "function cancelUnstake(uint256 requestId)",
   "function claimUnstake(uint256 requestId)",
   "function paused() view returns (bool)",

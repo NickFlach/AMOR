@@ -24,9 +24,20 @@ const ST_AMOR_ABI = [
 
 const STAKING_MANAGER_ABI = [
   "function WITHDRAWAL_DELAY() view returns (uint256)",
+  "function amor() view returns (address)",
+  "function stAmor() view returns (address)",
+  "function totalStaked() view returns (uint256)",
+  "function stakedBalance(address user) view returns (uint256)",
   "function getActiveStake(address user) view returns (uint256)",
+  "function requestCount(address user) view returns (uint256)",
   "function getRequest(address user, uint256 requestId) view returns (uint256 amount, uint256 requestedAt, uint256 unlockAt, bool claimed, bool cancelled)",
+  "function stake(uint256 amount)",
+  "function requestUnstake(uint256 amount) returns (uint256 requestId)",
+  "function cancelUnstake(uint256 requestId)",
+  "function claimUnstake(uint256 requestId)",
   "function paused() view returns (bool)",
+  "function pause()",
+  "function unpause()",
 ];
 
 const GOVERNOR_ABI = [
@@ -206,14 +217,13 @@ async function getUnstakeRequests(
   const requests: UnstakeRequest[] = [];
   
   try {
-    for (let i = 0; i < 10; i++) {
+    const count = await stakingManager.requestCount(address).catch(() => BigInt(0));
+    const requestCount = Number(count);
+    
+    for (let i = 0; i < requestCount; i++) {
       try {
         const request = await stakingManager.getRequest(address, i);
         const [amount, requestedAt, unlockAt, claimed, cancelled] = request;
-        
-        if (amount === BigInt(0) && requestedAt === BigInt(0)) {
-          break;
-        }
         
         requests.push({
           id: i,
