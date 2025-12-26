@@ -1,0 +1,233 @@
+AMOR Protocol
+Conscious Staking · Governed Coordination · Timelocked Authority
+Overview
+AMOR is a modular, governance-first protocol designed around commitment, presence, and deliberate coordination rather than speed, speculation, or extractive mechanics.
+At its core, AMOR provides:
+A standard ERC-20 token (AMOR)
+A role-authorized staking system
+Optional staking receipt token (StakedAMOR)
+On-chain governance via OpenZeppelin Governor v5
+A Timelock-enforced execution layer
+Explicit separation between ownership, authority, and execution
+The protocol is intentionally conservative:
+No hidden automation
+No implicit permissions
+No UI assumptions
+All authority is explicit, enumerable, and transferable to governance
+High-Level Architecture
+Copy code
+
+User Wallet
+   │
+   │ approve(AMOR)
+   ▼
+AMORStaking  ──►  AMOR (ERC20)
+   │                │
+   │                └─ safeTransferFrom()
+   │
+   ├─ internal accounting / lock logic
+   │
+   └─ calls into →
+        StakedAMOR
+           │
+           └─ role-gated mint / record
+Copy code
+
+Governance Flow
+
+AMOR / StakedAMOR (Votes)
+        │
+        ▼
+   AmorGovernor
+        │
+        ▼
+   AmorTimelock
+        │
+        ▼
+  Controlled Contracts
+Core Contracts
+1. AMOR (ERC-20 + Votes)
+Purpose
+Primary protocol token
+Voting power source
+Asset being staked
+Key Properties
+ERC20
+ERC20Votes (checkpointed voting power)
+Transferable
+Delegation required for voting power
+Important Notes
+Holding AMOR ≠ voting power
+Voting power is only counted if delegated
+Staking may amplify or gate participation (depending on configuration)
+2. AMORStaking
+Purpose
+Custodial staking vault
+Enforces staking rules
+Single authorized entry point into staking logic
+Key Mechanics
+Uses SafeERC20.safeTransferFrom
+Requires explicit approval from user
+Manages:
+stake amount
+lock period
+unlock eligibility
+withdrawal timing
+Security Design
+Does not mint arbitrarily
+Calls into other contracts only if authorized
+Can be paused if necessary
+3. StakedAMOR (optional receipt / accounting token)
+Purpose
+Tracks staked positions and/or shares
+May represent:
+non-transferable stake weight
+transferable receipt token
+internal accounting only
+Authorization Model
+Does not trust EOAs
+Only allows privileged calls from:
+the staking contract
+This is enforced via:
+Copy code
+
+STAKING_CONTRACT_ROLE
+This role must be granted to the staking contract address
+Otherwise all stake attempts will revert
+This is intentional and protects the protocol from unauthorized minting or manipulation.
+4. AmorGovernor (OpenZeppelin Governor v5)
+Purpose
+Proposal lifecycle
+Voting
+Queuing actions into the Timelock
+Configuration Highlights
+Voting delay (blocks)
+Voting period (blocks)
+Proposal threshold (token amount)
+Quorum percentage
+Important Characteristics
+Uses ERC20Votes snapshotting
+Voting power is evaluated at proposal snapshot
+Governor cannot execute directly
+5. AmorTimelock
+Purpose
+Enforces execution delay
+Holds ultimate control over governed contracts
+Decouples decision from execution
+Roles
+PROPOSER_ROLE → AmorGovernor
+EXECUTOR_ROLE → address(0) (permissionless execution)
+DEFAULT_ADMIN_ROLE → initially deployer, later governance
+Security Model
+All state-changing governance actions flow through Timelock
+Delay is enforced at the protocol level
+No emergency bypass unless explicitly coded
+Critical Wiring (Must Be Correct)
+These are non-optional steps for a functional system.
+1. Staking Authorization
+On StakedAMOR (or the contract enforcing stake authority):
+Copy code
+
+grantRole(STAKING_CONTRACT_ROLE, <AMORStaking>)
+Without this:
+stake() will revert
+Transfers will roll back
+No logs will be emitted
+UI will appear “broken”
+This is expected behavior.
+2. Governance Wiring
+On AmorTimelock:
+Copy code
+
+grantRole(PROPOSER_ROLE, <AmorGovernor>)
+grantRole(EXECUTOR_ROLE, address(0))
+Later (optional, recommended):
+Copy code
+
+renounceRole(DEFAULT_ADMIN_ROLE, deployer)
+Only do this after:
+Ownership of governed contracts is transferred
+Governance has successfully executed at least one proposal
+3. Ownership Transfers (Pass 4)
+Contracts intended to be governed must be owned by the Timelock:
+AMOR (if minting / pausing governed)
+AMORStaking
+StakedAMOR
+Any future modules
+This ensures:
+No EOA retains unilateral power
+Governance decisions are enforced, not symbolic
+User Interaction Flow
+Staking
+Approve AMOR:
+Copy code
+
+AMOR.approve(AMORStaking, amount)
+Stake:
+Copy code
+
+AMORStaking.stake(amount, lockPeriod)
+Verify:
+AMOR balance decreases
+Staked position recorded
+Receipt / accounting updated
+Voting
+Delegate voting power:
+Copy code
+
+AMOR.delegate(self)
+Create proposal (if threshold met)
+Vote during active period
+Queue proposal (if passed)
+Execute after timelock delay
+Common Failure Modes (By Design)
+Symptom
+Cause
+Meaning
+stake reverts, no logs
+missing STAKING_CONTRACT_ROLE
+security gate working
+approve works, stake fails
+wrong role or paused
+invariant enforced
+vote power = 0
+no delegation
+ERC20Votes behavior
+proposal stuck Pending
+voting delay
+intentional cooldown
+execute fails
+timelock delay not elapsed
+protocol protection
+These are not bugs.
+They are guardrails.
+Design Philosophy
+AMOR is intentionally:
+Explicit over implicit
+Deliberate over fast
+Composable over monolithic
+Governance-first over admin-first
+The protocol assumes:
+UIs can lie
+Humans make mistakes
+Authority must be enumerable
+Power must be time-delayed
+Every revert you encountered was a signal, not a failure.
+Extensibility
+The system is designed to support:
+Additional staking strategies
+Multiple staking contracts (rotated via governance)
+Consciousness / reputation weighting
+Sub-DAOs
+Permissioned or permissionless execution
+Emergency pause modules (governed)
+All without breaking existing invariants.
+Final Note
+If you are reading this because something “isn’t working”:
+Check roles
+Check ownership
+Check delegation
+Check delays
+If all four are correct, the protocol will behave exactly as specified.
+AMOR is not optimized for velocity.
+It is optimized for correctness, trust minimization, and long-term coordination.

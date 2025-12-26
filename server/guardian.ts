@@ -111,7 +111,93 @@ Before users execute, simulate transactions to validate they will succeed and es
 8. For staking: Explain the 2-step process (approve then stake)
 9. For delegation: Remind users that self-delegation is required to activate voting power
 
-When providing transaction data, format it clearly so users understand what they're signing. Include the contract address, encoded data, and a human-readable description.`;
+When providing transaction data, format it clearly so users understand what they're signing. Include the contract address, encoded data, and a human-readable description.
+
+## AMOR Protocol Deep Knowledge
+
+AMOR is a modular, governance-first protocol designed around commitment, presence, and deliberate coordination rather than speed, speculation, or extractive mechanics.
+
+### Core Contracts Architecture
+
+**1. AMOR Token (ERC-20 + Votes)**
+- Primary protocol token and voting power source
+- ERC20Votes with checkpointed voting power
+- CRITICAL: Holding AMOR ≠ voting power. Voting power only counts if DELEGATED
+- Users must delegate to themselves (self-delegate) to activate voting power
+
+**2. AMORStaking (Staking Vault)**
+- Custodial staking vault and single authorized entry point
+- Uses SafeERC20.safeTransferFrom (requires explicit user approval)
+- Manages: stake amount, lock period, unlock eligibility, withdrawal timing
+- Does not mint arbitrarily - security by design
+
+**3. StakedAMOR (Receipt Token)**
+- Tracks staked positions and voting weight
+- SECURITY: Only allows privileged calls from the staking contract
+- Enforced via STAKING_CONTRACT_ROLE
+- Will reject any direct EOA calls - this is INTENTIONAL PROTECTION
+
+**4. AmorGovernor (OpenZeppelin Governor v5)**
+- Handles proposal lifecycle, voting, and queuing to Timelock
+- Uses ERC20Votes snapshotting - voting power evaluated at proposal snapshot
+- Configuration: voting delay (blocks), voting period, proposal threshold, quorum
+- Governor cannot execute directly - must go through Timelock
+
+**5. AmorTimelock**
+- Enforces execution delay for all governance actions
+- Holds ultimate control over governed contracts
+- PROPOSER_ROLE → AmorGovernor
+- EXECUTOR_ROLE → address(0) (permissionless execution after delay)
+- No emergency bypass unless explicitly coded
+
+### Governance Flow
+\`\`\`
+AMOR/StakedAMOR (Votes) → AmorGovernor → AmorTimelock → Controlled Contracts
+\`\`\`
+
+### User Interaction Flows
+
+**Staking Flow:**
+1. User approves AMOR: \`AMOR.approve(AMORStaking, amount)\`
+2. User stakes: \`AMORStaking.stake(amount, lockPeriod)\`
+3. AMOR balance decreases, staked position recorded, stAMOR updated
+
+**Voting Flow:**
+1. Delegate voting power: \`AMOR.delegate(self)\`
+2. Create proposal (if threshold met)
+3. Vote during active period
+4. Queue proposal (if passed)
+5. Execute after timelock delay
+
+### Common "Failure" Modes (BY DESIGN)
+
+These are NOT bugs - they are security guardrails:
+
+| Symptom | Cause | Meaning |
+|---------|-------|---------|
+| stake reverts, no logs | missing STAKING_CONTRACT_ROLE | Security gate working |
+| approve works, stake fails | Wrong role or paused | Invariant enforced |
+| voting power = 0 | No delegation | ERC20Votes behavior |
+| proposal stuck Pending | Voting delay | Intentional cooldown |
+| execute fails | Timelock delay not elapsed | Protocol protection |
+
+If a user reports "staking isn't working", check:
+1. Roles (STAKING_CONTRACT_ROLE granted?)
+2. Ownership (Timelock owns contracts?)
+3. Delegation (user self-delegated?)
+4. Delays (timelock period elapsed?)
+
+### Design Philosophy
+
+AMOR is intentionally:
+- **Explicit over implicit** - No hidden automation
+- **Deliberate over fast** - No UI assumptions
+- **Governance-first** - All authority flows through governance
+- **Trust-minimized** - All authority is enumerable and transferable
+
+The protocol assumes UIs can lie, humans make mistakes, authority must be enumerable, and power must be time-delayed.
+
+Every revert is a signal, not a failure. The system is optimized for correctness, trust minimization, and long-term coordination - NOT velocity.`;
 
 const tools: OpenAI.Chat.ChatCompletionTool[] = [
   {
