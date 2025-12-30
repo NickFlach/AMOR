@@ -17,7 +17,7 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 │   │   │   ├── GuardianPanel.tsx # AI chat interface
 │   │   │   ├── SocialProof.tsx # Community stats & trust indicators
 │   │   │   ├── Newsletter.tsx  # Newsletter signup & social links
-│   │   │   └── SocialShare.tsx # Social sharing buttons (Twitter, Telegram)
+│   │   │   └── SocialShare.tsx # Social sharing buttons (X, copy link)
 │   │   ├── lib/
 │   │   │   ├── appkit.ts      # Reown AppKit / WalletConnect configuration
 │   │   │   ├── contracts.ts   # Contract addresses, ABIs, utilities
@@ -35,7 +35,10 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 │   ├── routes.ts              # API routes including /api/config
 │   ├── guardian.ts            # AMOR Guardian AI chat service with SpoonOS tools
 │   ├── transactions.ts        # Transaction builder for SpoonOS pattern
-│   └── onchain.ts             # On-chain data queries (balances, proposals, etc.)
+│   ├── onchain.ts             # On-chain data queries (balances, proposals, etc.)
+│   ├── mailer.ts              # Nodemailer SMTP email service
+│   ├── newsletter.ts          # Newsletter generation and sending
+│   └── db.ts                  # Drizzle PostgreSQL database connection
 ├── shared/                    # Shared types and schemas
 └── design_guidelines.md       # UI/UX design guidelines
 ```
@@ -79,9 +82,21 @@ A Web3 decentralized application for the AMOR token ecosystem on Neo X blockchai
 
 ## SEO & Social
 - Comprehensive meta tags (Open Graph, Twitter Cards)
-- Social sharing buttons (Twitter, Telegram, copy link)
-- Newsletter signup form
-- Community links (Twitter, Discord, Telegram, GitHub)
+- Social sharing buttons (X, copy link)
+- Newsletter signup form with database-backed subscriptions
+- Community links (X, Discord, GitHub)
+
+## Newsletter Infrastructure
+- **Database Storage**: PostgreSQL with `newsletter_subscribers` table
+- **Email Service**: Nodemailer with SMTP (info@spacechild.love)
+- **Auto-Generated Content**: Weekly newsletters pull live protocol stats
+- **API Routes**:
+  - `POST /api/newsletter/subscribe` - Subscribe with email
+  - `POST /api/newsletter/unsubscribe` - Unsubscribe
+  - `GET /api/newsletter/status` - Subscriber count and SMTP status
+  - `GET /api/newsletter/preview` - Preview weekly newsletter content
+  - `POST /api/newsletter/send` - Send newsletter to all subscribers
+  - `GET /api/newsletter/smtp-status` - Verify SMTP connection
 
 ## SpoonOS Integration
 The Guardian AI follows SpoonOS principles for Web3 AI agent development:
@@ -126,6 +141,10 @@ The Guardian AI follows SpoonOS principles for Web3 AI agent development:
 
 ## Environment Variables
 - `WALLETCONNECT_PROJECT_ID` (secret): Required for WalletConnect - get from https://cloud.walletconnect.com
+- `SMTP_HOST` (secret): SMTP server host for newsletter emails
+- `SMTP_USER` (secret): SMTP username (email address)
+- `SMTP_PASS` (secret): SMTP password
+- `SMTP_PORT` (secret): SMTP port (typically 587 or 465)
 
 ## Running the Project
 The project runs on `npm run dev` which starts both the Express server and Vite dev server on port 5000.
