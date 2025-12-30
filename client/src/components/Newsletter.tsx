@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Mail, ArrowRight, Check, Loader2 } from "lucide-react";
-import { SiX, SiDiscord, SiTelegram, SiGithub } from "react-icons/si";
+import { SiX, SiDiscord, SiGithub } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 
 export function Newsletter() {
@@ -18,23 +18,43 @@ export function Newsletter() {
 
     setIsSubmitting(true);
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsSubmitting(false);
-    setIsSubscribed(true);
-    setEmail("");
-    
-    toast({
-      title: "Subscribed!",
-      description: "You'll receive updates about AMOR governance and developments.",
-    });
+    try {
+      const response = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setIsSubscribed(true);
+        setEmail("");
+        toast({
+          title: "Subscribed!",
+          description: "You'll receive updates about AMOR governance and developments.",
+        });
+      } else {
+        toast({
+          title: data.message || "Already subscribed",
+          description: "This email is already on our list.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to subscribe. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const socialLinks = [
-    { icon: SiX, href: "https://twitter.com/AMORProtocol", label: "X (Twitter)", testId: "link-social-twitter" },
-    { icon: SiDiscord, href: "https://discord.gg/amor", label: "Discord", testId: "link-social-discord" },
-    { icon: SiTelegram, href: "https://t.me/AMORProtocol", label: "Telegram", testId: "link-social-telegram" },
-    { icon: SiGithub, href: "https://github.com/amor-protocol", label: "GitHub", testId: "link-social-github" },
+    { icon: SiX, href: "https://x.com/CometMessa70661", label: "X", testId: "link-social-x" },
+    { icon: SiDiscord, href: "https://discord.com/channels/1435135541061353615/1435135542038888531", label: "Discord", testId: "link-social-discord" },
+    { icon: SiGithub, href: "https://github.com/NickFlach/AMOR", label: "GitHub", testId: "link-social-github" },
   ];
 
   return (

@@ -1,5 +1,5 @@
 import { ExternalLink, Copy, Check, Zap } from "lucide-react";
-import { SiX, SiDiscord, SiTelegram, SiGithub } from "react-icons/si";
+import { SiX, SiDiscord, SiGithub } from "react-icons/si";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -73,10 +73,9 @@ export function Footer() {
   ];
 
   const socialLinks = [
-    { icon: SiX, href: "https://twitter.com/AMORProtocol", label: "X", testId: "footer-link-twitter" },
-    { icon: SiDiscord, href: "https://discord.gg/amor", label: "Discord", testId: "footer-link-discord" },
-    { icon: SiTelegram, href: "https://t.me/AMORProtocol", label: "Telegram", testId: "footer-link-telegram" },
-    { icon: SiGithub, href: "https://github.com/amor-protocol", label: "GitHub", testId: "footer-link-github" },
+    { icon: SiX, href: "https://x.com/CometMessa70661", label: "X", testId: "footer-link-x" },
+    { icon: SiDiscord, href: "https://discord.com/channels/1435135541061353615/1435135542038888531", label: "Discord", testId: "footer-link-discord" },
+    { icon: SiGithub, href: "https://github.com/NickFlach/AMOR", label: "GitHub", testId: "footer-link-github" },
   ];
 
   return (

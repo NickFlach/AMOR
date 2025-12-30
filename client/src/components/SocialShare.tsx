@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { SiX, SiTelegram, SiDiscord } from "react-icons/si";
+import { SiX } from "react-icons/si";
 import { Link2, Check } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -27,8 +27,6 @@ export function SocialShare({
   const encodedUrl = encodeURIComponent(url);
   
   const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`;
-  const telegramUrl = `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitle}`;
-  const discordText = `${title}\n${url}`;
   
   const handleCopyLink = async () => {
     try {
@@ -69,21 +67,6 @@ export function SocialShare({
           aria-label="Share on X (Twitter)"
         >
           <SiX className={iconSize} />
-        </a>
-      </Button>
-      <Button
-        variant="outline"
-        size={buttonSize}
-        asChild
-        data-testid="button-share-telegram"
-      >
-        <a 
-          href={telegramUrl} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          aria-label="Share on Telegram"
-        >
-          <SiTelegram className={iconSize} />
         </a>
       </Button>
       <Button

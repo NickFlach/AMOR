@@ -8,6 +8,15 @@ import {
   clearSession,
 } from "./guardian";
 import { getChainStats, getUserChainData } from "./onchain";
+import {
+  addSubscriber,
+  removeSubscriber,
+  getSubscriberCount,
+  sendNewsletterToAll,
+  generateWeeklyNewsletter,
+  sendWelcomeEmail,
+} from "./newsletter";
+import { isSmtpConfigured, verifySmtpConnection } from "./mailer";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -102,6 +111,108 @@ export async function registerRoutes(
     } catch (error) {
       console.error("User chain data error:", error);
       res.status(500).json({ error: "Failed to fetch user chain data" });
+    }
+  });
+
+  app.post("/api/newsletter/subscribe", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      const added = await addSubscriber(email);
+      
+      if (added) {
+        sendWelcomeEmail(email).catch(err => 
+          console.error("Failed to send welcome email:", err)
+        );
+        res.json({ success: true, message: "Successfully subscribed to newsletter" });
+      } else {
+        res.json({ success: false, message: "Email already subscribed" });
+      }
+    } catch (error) {
+      console.error("Newsletter subscribe error:", error);
+      res.status(500).json({ error: "Failed to subscribe" });
+    }
+  });
+
+  app.post("/api/newsletter/unsubscribe", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      await removeSubscriber(email);
+      res.json({ success: true, message: "Successfully unsubscribed" });
+    } catch (error) {
+      console.error("Newsletter unsubscribe error:", error);
+      res.status(500).json({ error: "Failed to unsubscribe" });
+    }
+  });
+
+  app.get("/api/newsletter/status", async (req: Request, res: Response) => {
+    try {
+      const subscriberCount = await getSubscriberCount();
+      const smtpConfigured = isSmtpConfigured();
+      
+      res.json({
+        subscriberCount,
+        smtpConfigured,
+      });
+    } catch (error) {
+      console.error("Newsletter status error:", error);
+      res.status(500).json({ error: "Failed to get newsletter status" });
+    }
+  });
+
+  app.get("/api/newsletter/preview", async (req: Request, res: Response) => {
+    try {
+      const { subject, html } = await generateWeeklyNewsletter();
+      res.json({ subject, html });
+    } catch (error) {
+      console.error("Newsletter preview error:", error);
+      res.status(500).json({ error: "Failed to generate preview" });
+    }
+  });
+
+  app.post("/api/newsletter/send", async (req: Request, res: Response) => {
+    try {
+      if (!isSmtpConfigured()) {
+        return res.status(400).json({ error: "SMTP not configured" });
+      }
+
+      const result = await sendNewsletterToAll();
+      res.json({ 
+        success: true, 
+        message: `Newsletter sent to ${result.sent} subscribers`,
+        ...result 
+      });
+    } catch (error) {
+      console.error("Newsletter send error:", error);
+      res.status(500).json({ error: "Failed to send newsletter" });
+    }
+  });
+
+  app.get("/api/newsletter/smtp-status", async (req: Request, res: Response) => {
+    try {
+      if (!isSmtpConfigured()) {
+        return res.json({ configured: false, verified: false });
+      }
+      
+      const verified = await verifySmtpConnection();
+      res.json({ configured: true, verified });
+    } catch (error) {
+      console.error("SMTP status error:", error);
+      res.json({ configured: isSmtpConfigured(), verified: false, error: String(error) });
     }
   });
 
