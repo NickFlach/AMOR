@@ -1,5 +1,7 @@
 # AMOR Protocol - Consciousness Nexus
 
+> **License:** [Space Child License v1.0](https://legal.spacechild.love) — Free for peaceful use. v1.x was MIT.
+
 <div align="center">
 
 ![AMOR Protocol](https://img.shields.io/badge/AMOR-Consciousness%20Nexus-6366f1?style=for-the-badge)
